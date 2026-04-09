@@ -6,69 +6,19 @@
 <title>SPACE RUNNER ULTRA</title>
 
 <style>
-html,body{
-  margin:0;
-  padding:0;
-  overflow:hidden;
-  background:#000;
-  font-family:system-ui;
-}
-
-/* CANVAS */
-#gameCanvas{
-  position:fixed;
-  top:0;left:0;
-  width:100%;height:100%;
-}
-
-/* COCKPIT */
-#cockpit{
-  position:fixed;
-  bottom:0;
-  left:50%;
-  transform:translateX(-50%);
-  width:100%;
-  max-width:500px;
-  pointer-events:none;
-  z-index:5;
-}
-
-/* HUD */
-#hud{
-  position:fixed;
-  top:10px;left:10px;
-  color:#0ff;
-  z-index:10;
-}
-
-/* MENU */
-#menu{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.8);
-  backdrop-filter:blur(10px);
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  z-index:20;
-}
-
-.btn{
-  padding:12px 24px;
-  margin:10px;
-  background:#0ff;
-  color:#000;
-  border-radius:8px;
-  font-weight:bold;
-}
+html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-ui;}
+#gameCanvas{position:fixed;top:0;left:0;width:100%;height:100%;}
+#cockpit{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;pointer-events:none;z-index:5;}
+#hud{position:fixed;top:10px;left:10px;color:#0ff;z-index:10;}
+#menu{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:20;}
+.btn{padding:12px 24px;margin:10px;background:#0ff;color:#000;border-radius:8px;font-weight:bold;}
 </style>
 </head>
 
 <body>
 
 <canvas id="gameCanvas"></canvas>
-<img src="image\cockpit.png" id="cockpit">
+<img src="image/cockpit.png" id="cockpit">
 
 <div id="hud">SCORE: <span id="score">0</span></div>
 
@@ -91,8 +41,7 @@ function resize(){
 resize();
 addEventListener("resize", resize);
 
-/* ================= STATE ================= */
-
+/* STATE */
 let game = {
   running:false,
   weapon:"laser",
@@ -103,38 +52,46 @@ let game = {
   bullets:[],
   meteors:[],
   stars:[],
-  planets:[],
-  comets:[],
   shake:0,
   charging:false,
   chargePower:0
 };
 
-/* ================= MENU ================= */
-
-function startGame(){
-  document.getElementById("menu").style.display="none";
-  game.running = true;
-}
-
-function setWeapon(w){
-  game.weapon = w;
-}
-
-/* ================= AUDIO ================= */
-
+/* AUDIO UNLOCK (KRİTİK) */
 const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+let unlocked=false;
+
+function unlockAudio(){
+  if(unlocked) return;
+  const buffer = audioCtx.createBuffer(1,1,22050);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start(0);
+  unlocked=true;
+}
+
 function playShoot(){
-  let o=audioCtx.createOscillator();
-  let g=audioCtx.createGain();
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
   o.frequency.value=600;
   o.connect(g); g.connect(audioCtx.destination);
   o.start();
   g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.07);
 }
 
-/* ================= STARS ================= */
+/* MENU */
+function startGame(){
+  unlockAudio();
+  document.getElementById("menu").style.display="none";
+  game.running=true;
+}
 
+function setWeapon(w){
+  game.weapon=w;
+}
+
+/* STARS */
 for(let i=0;i<120;i++){
   game.stars.push({
     x:(Math.random()-0.5)*canvas.width,
@@ -164,76 +121,7 @@ function drawStars(){
   }
 }
 
-/* ================= PLANETS ================= */
-
-function spawnPlanet(){
-  game.planets.push({
-    x:(Math.random()-0.5)*canvas.width,
-    y:(Math.random()-0.5)*canvas.height,
-    z:canvas.width,
-    size:80+Math.random()*120
-  });
-}
-setInterval(spawnPlanet,6000);
-
-function updatePlanets(){
-  for(let p of game.planets){
-    p.z -= game.speed*0.5;
-    if(p.z<1) p.remove=true;
-  }
-  game.planets=game.planets.filter(p=>!p.remove);
-}
-
-function drawPlanets(){
-  for(let p of game.planets){
-    let sc=200/p.z;
-    let x=p.x*sc+canvas.width/2;
-    let y=p.y*sc+canvas.height/2;
-    let size=p.size*sc;
-
-    ctx.fillStyle="#223";
-    ctx.beginPath();
-    ctx.arc(x,y,size,0,Math.PI*2);
-    ctx.fill();
-  }
-}
-
-/* ================= COMETS ================= */
-
-function spawnComet(){
-  game.comets.push({
-    x:-canvas.width/2,
-    y:(Math.random()-0.5)*canvas.height,
-    z:canvas.width
-  });
-}
-setInterval(spawnComet,4000);
-
-function updateComets(){
-  for(let c of game.comets){
-    c.z -= game.speed*2;
-    c.x += 10;
-    if(c.z<1) c.remove=true;
-  }
-  game.comets=game.comets.filter(c=>!c.remove);
-}
-
-function drawComets(){
-  for(let c of game.comets){
-    let sc=200/c.z;
-    let x=c.x*sc+canvas.width/2;
-    let y=c.y*sc+canvas.height/2;
-
-    ctx.strokeStyle="#fff";
-    ctx.beginPath();
-    ctx.moveTo(x,y);
-    ctx.lineTo(x-20,y+10);
-    ctx.stroke();
-  }
-}
-
-/* ================= METEORS ================= */
-
+/* METEOR */
 function spawnMeteor(){
   game.meteors.push({
     x:(Math.random()-0.5)*canvas.width,
@@ -242,7 +130,7 @@ function spawnMeteor(){
     size:20+Math.random()*40
   });
 }
-setInterval(spawnMeteor,700);
+setInterval(spawnMeteor,600);
 
 function updateMeteors(){
   for(let m of game.meteors){
@@ -259,17 +147,19 @@ function drawMeteors(){
     let y=m.y*sc+canvas.height/2;
     let size=m.size*sc;
 
-    ctx.fillStyle="#888";
+    let shade = 100 + (300/m.z)*40;
+    ctx.fillStyle=`rgb(${shade},${shade},${shade})`;
+
     ctx.beginPath();
     ctx.arc(x,y,size,0,Math.PI*2);
     ctx.fill();
   }
 }
 
-/* ================= WEAPONS ================= */
-
+/* SHOOT */
 function shoot(){
   playShoot();
+  if(navigator.vibrate) navigator.vibrate(10);
 
   let cx=game.playerX-canvas.width/2;
 
@@ -284,13 +174,16 @@ function shoot(){
   }
 
   if(game.weapon==="charge"){
-    let power = game.chargePower || 1;
+    let power=game.chargePower||1;
     game.bullets.push({x:cx,y:80,z:0,speed:20,size:power*2});
     game.chargePower=0;
   }
 }
 
-canvas.addEventListener("touchstart",()=>{
+/* INPUT FIX */
+canvas.addEventListener("touchstart",(e)=>{
+  unlockAudio();
+
   if(game.weapon==="charge"){
     game.charging=true;
   }else{
@@ -305,8 +198,12 @@ canvas.addEventListener("touchend",()=>{
   }
 });
 
-/* ================= BULLETS ================= */
+canvas.addEventListener("click",()=>{
+  unlockAudio();
+  if(game.weapon!=="charge") shoot();
+});
 
+/* BULLETS */
 function updateBullets(){
   for(let b of game.bullets){
     b.z += b.speed;
@@ -325,8 +222,48 @@ function drawBullets(){
   }
 }
 
-/* ================= LOOP ================= */
+/* COLLISION */
+function checkCollision(){
+  for(let m of game.meteors){
+    let sc=300/m.z;
+    let mx=m.x*sc+canvas.width/2;
+    let my=m.y*sc+canvas.height/2;
+    let size=m.size*sc;
 
+    for(let b of game.bullets){
+      let bs=300/(canvas.width-b.z);
+      let bx=b.x*bs+canvas.width/2;
+      let by=b.y*bs+canvas.height-120;
+
+      let dx=mx-bx;
+      let dy=my-by;
+
+      if(dx*dx+dy*dy < size*size){
+        m.hit=true;
+        b.hit=true;
+        game.score+=10;
+        game.shake=5;
+      }
+    }
+  }
+
+  game.meteors=game.meteors.filter(m=>!m.hit);
+  game.bullets=game.bullets.filter(b=>!b.hit);
+}
+
+/* EFFECT */
+function applyShake(){
+  if(game.shake>0){
+    let dx=(Math.random()-0.5)*game.shake;
+    let dy=(Math.random()-0.5)*game.shake;
+    canvas.style.transform=`translate(${dx}px,${dy}px)`;
+    game.shake*=0.8;
+  } else {
+    canvas.style.transform="translate(0,0)";
+  }
+}
+
+/* LOOP */
 function loop(){
   if(!game.running){
     requestAnimationFrame(loop);
@@ -341,20 +278,20 @@ function loop(){
   ctx.fillRect(0,0,canvas.width,canvas.height);
 
   updateStars(); drawStars();
-  updatePlanets(); drawPlanets();
-  updateComets(); drawComets();
   updateMeteors(); drawMeteors();
   updateBullets(); drawBullets();
+  checkCollision();
 
-  document.getElementById("score").innerText = game.score;
+  applyShake();
+
+  document.getElementById("score").innerText=game.score;
 
   requestAnimationFrame(loop);
 }
 
 loop();
 
-/* ================= CONTROLS ================= */
-
+/* MOVE */
 canvas.addEventListener("touchmove",(e)=>{
   game.targetX = e.touches[0].clientX;
 });
