@@ -12,17 +12,7 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 #hud{position:fixed;top:10px;left:10px;color:#0ff;z-index:10;}
 #menu{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:20;}
 .btn{padding:12px 24px;margin:10px;background:#0ff;color:#000;border-radius:8px;font-weight:bold;}
-
-/* 🔥 FIRE BUTTON */
-#fireBtn{
- position:fixed;
- bottom:60px;
- right:25px;
- width:80px;height:80px;
- border-radius:50%;
- background:rgba(0,255,255,0.25);
- z-index:15;
-}
+#fireBtn{position:fixed;bottom:60px;right:25px;width:80px;height:80px;border-radius:50%;background:rgba(0,255,255,0.25);z-index:15;}
 </style>
 </head>
 
@@ -64,6 +54,7 @@ let game = {
   bullets:[],
   meteors:[],
   stars:[],
+  debris:[], // 💥 YENİ
   shake:0,
   charging:false,
   chargePower:0,
@@ -105,7 +96,7 @@ function setWeapon(w){
   game.weapon=w;
 }
 
-/* ⭐ STARS */
+/* STARS */
 for(let i=0;i<120;i++){
   game.stars.push({
     x:(Math.random()-0.5)*canvas.width,
@@ -135,7 +126,7 @@ function drawStars(){
   }
 }
 
-/* ☄️ METEOR (3D SABİT KALDI) */
+/* METEOR */
 function spawnMeteor(){
   game.meteors.push({
     x:(Math.random()-0.5)*canvas.width,
@@ -168,15 +159,15 @@ function drawMeteors(){
   }
 }
 
-/* 🔫 SHOOT FIX (EN KRİTİK) */
+/* 🔫 SHOOT FIX */
 function shoot(){
   playShoot();
   if(navigator.vibrate) navigator.vibrate(10);
 
   let cx = game.playerX - canvas.width/2;
 
-  game.bullets.push({x:cx-15,y:120,z:0,speed:30});
-  game.bullets.push({x:cx+15,y:120,z:0,speed:30});
+  game.bullets.push({x:cx-14,y:90,z:0,speed:32});
+  game.bullets.push({x:cx+14,y:90,z:0,speed:32});
 }
 
 /* INPUT */
@@ -184,7 +175,7 @@ canvas.addEventListener("touchstart",()=>{unlockAudio();shoot();});
 canvas.addEventListener("click",()=>{unlockAudio();shoot();});
 document.getElementById("fireBtn").addEventListener("touchstart",shoot);
 
-/* 🔫 BULLETS (3D FIX) */
+/* BULLETS */
 function updateBullets(){
   for(let b of game.bullets){
     b.z += b.speed;
@@ -196,21 +187,78 @@ function drawBullets(){
   for(let b of game.bullets){
     let sc=300/(canvas.width-b.z);
     let x=b.x*sc+canvas.width/2;
-    let y=canvas.height-150 - (b.z*0.3);
+    let y=(canvas.height-140)-(b.z*0.6);
 
     ctx.fillStyle="#0ff";
-    ctx.fillRect(x,y,4,14);
+    ctx.fillRect(x,y,4,12);
   }
 }
 
-/* 🌌 RANDOM OBJECT (SUN / NEBULA / METEOR IMAGE) */
+/* 💥 COLLISION + PARÇALANMA */
+function checkCollision(){
+  for(let m of game.meteors){
+
+    let ms=300/m.z;
+    let mx=m.x*ms+canvas.width/2;
+    let my=m.y*ms+canvas.height/2;
+    let mSize=m.size*ms;
+
+    for(let b of game.bullets){
+
+      let bs=300/(canvas.width-b.z);
+      let bx=b.x*bs+canvas.width/2;
+      let by=(canvas.height-140)-(b.z*0.6);
+
+      let dx=mx-bx;
+      let dy=my-by;
+
+      if(dx*dx+dy*dy < mSize*mSize){
+
+        m.hit=true;
+        b.hit=true;
+        game.score+=10;
+
+        for(let i=0;i<8;i++){
+          game.debris.push({
+            x:mx,
+            y:my,
+            vx:(Math.random()-0.5)*6,
+            vy:(Math.random()-0.5)*6,
+            life:30
+          });
+        }
+      }
+    }
+  }
+
+  game.meteors=game.meteors.filter(m=>!m.hit);
+  game.bullets=game.bullets.filter(b=>!b.hit);
+}
+
+/* 💥 DEBRIS */
+function updateDebris(){
+  for(let d of game.debris){
+    d.x+=d.vx;
+    d.y+=d.vy;
+    d.life--;
+  }
+  game.debris=game.debris.filter(d=>d.life>0);
+}
+
+function drawDebris(){
+  ctx.fillStyle="#aaa";
+  for(let d of game.debris){
+    ctx.fillRect(d.x,d.y,3,3);
+  }
+}
+
+/* BG */
 const imgs={
  sun:new Image(),
  nebula:new Image(),
  meteor:new Image(),
  meteor1:new Image()
 };
-
 imgs.sun.src="image/sun.png";
 imgs.nebula.src="image/nebula.png";
 imgs.meteor.src="image/meteor.png";
@@ -218,44 +266,30 @@ imgs.meteor1.src="image/meteor1.png";
 
 function spawnBG(){
  if(game.bgObject) return;
-
  let keys=Object.keys(imgs);
  let key=keys[Math.floor(Math.random()*keys.length)];
-
- game.bgObject={
-  img:imgs[key],
-  x:Math.random()*canvas.width,
-  y:-200,
-  size:200+Math.random()*200
- };
+ game.bgObject={img:imgs[key],x:Math.random()*canvas.width,y:-200,size:200+Math.random()*200};
 }
-
 setInterval(spawnBG,4000);
 
 function updateBG(){
  if(!game.bgObject) return;
- game.bgObject.y += 1;
- if(game.bgObject.y > canvas.height+200){
-  game.bgObject=null;
- }
+ game.bgObject.y+=1;
+ if(game.bgObject.y>canvas.height+200) game.bgObject=null;
 }
 
 function drawBG(){
  if(!game.bgObject) return;
- let o=game.bgObject;
  ctx.globalAlpha=0.6;
- ctx.drawImage(o.img,o.x,o.y,o.size,o.size);
+ ctx.drawImage(game.bgObject.img,game.bgObject.x,game.bgObject.y,game.bgObject.size,game.bgObject.size);
  ctx.globalAlpha=1;
 }
 
-/* 📱 GYRO */
+/* GYRO */
 function initGyro(){
- if(typeof DeviceOrientationEvent !== "undefined"){
-  window.addEventListener("deviceorientation",(e)=>{
-    let tilt=e.gamma;
-    game.targetX = canvas.width/2 + tilt*10;
-  });
- }
+ window.addEventListener("deviceorientation",(e)=>{
+  game.targetX = canvas.width/2 + e.gamma*10;
+ });
 }
 
 /* LOOP */
@@ -274,17 +308,17 @@ function loop(){
  updateBG(); drawBG();
  updateMeteors(); drawMeteors();
  updateBullets(); drawBullets();
+ checkCollision();
+ updateDebris(); drawDebris();
 
  document.getElementById("score").innerText=game.score;
 
  requestAnimationFrame(loop);
 }
-
 loop();
 
-/* MOVE */
 canvas.addEventListener("touchmove",(e)=>{
- game.targetX = e.touches[0].clientX;
+ game.targetX=e.touches[0].clientX;
 });
 </script>
 </body>
