@@ -10,10 +10,14 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 #gameCanvas{position:fixed;top:0;left:0;width:100%;height:100%;}
 #cockpit{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;pointer-events:none;z-index:5;}
 #hud{position:fixed;top:10px;left:10px;color:#0ff;z-index:10;}
-#shieldBar{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);width:200px;height:10px;background:#222;z-index:20;}
-#shield{height:100%;background:#0ff;width:100%;}
+#menu{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:20;}
+.btn{padding:12px 24px;margin:10px;background:#0ff;color:#000;border-radius:8px;font-weight:bold;}
+
 #fireBtn{position:fixed;bottom:60px;right:25px;width:80px;height:80px;border-radius:50%;background:rgba(0,255,255,0.25);z-index:15;}
-#boostBtn{position:fixed;bottom:60px;left:25px;width:80px;height:80px;border-radius:50%;background:red;z-index:15;}
+#boostBtn{position:fixed;bottom:60px;left:25px;width:80px;height:80px;border-radius:50%;background:rgba(255,0,0,0.6);z-index:15;}
+
+#shieldBar{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);width:220px;height:10px;background:#222;border-radius:6px;overflow:hidden;z-index:20;}
+#shield{height:100%;background:#0ff;width:100%;}
 </style>
 </head>
 
@@ -21,38 +25,68 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 
 <canvas id="gameCanvas"></canvas>
 <img src="image/cockpit.png" id="cockpit">
+
 <div id="fireBtn"></div>
 <div id="boostBtn"></div>
 
 <div id="shieldBar"><div id="shield"></div></div>
 <div id="hud">SCORE: <span id="score">0</span></div>
 
+<div id="menu">
+  <h2 style="color:#0ff">SPACE RUNNER</h2>
+  <div class="btn" onclick="startGame()">START</div>
+</div>
+
 <script>
+/* ================= CORE ================= */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 function resize(){
- canvas.width=innerWidth;
- canvas.height=innerHeight;
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
 }
 resize();
-addEventListener("resize",resize);
+addEventListener("resize", resize);
 
-let game={
- running:true,
- playerX:0,
- targetX:0,
- bullets:[],
- meteors:[],
- debris:[],
- stars:[],
- shield:100,
- boost:false,
- boostTimer:0
+/* ================= STATE ================= */
+let game = {
+  running:false,
+  score:0,
+  speed:7,
+  playerX:canvas.width/2,
+  targetX:canvas.width/2,
+  bullets:[],
+  meteors:[],
+  stars:[],
+  debris:[],
+  shield:100,
+  boost:false,
+  boostTimer:0
 };
 
-/* ⭐ STARS */
-for(let i=0;i<120;i++){
+/* ================= AUDIO ================= */
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+let unlocked=false;
+function unlockAudio(){
+ if(unlocked) return;
+ const buffer = audioCtx.createBuffer(1,1,22050);
+ const source = audioCtx.createBufferSource();
+ source.buffer = buffer;
+ source.connect(audioCtx.destination);
+ source.start(0);
+ unlocked=true;
+}
+
+/* ================= MENU ================= */
+function startGame(){
+ unlockAudio();
+ document.getElementById("menu").style.display="none";
+ game.running=true;
+}
+
+/* ================= STARS ================= */
+for(let i=0;i<140;i++){
  game.stars.push({
   x:(Math.random()-0.5)*canvas.width,
   y:(Math.random()-0.5)*canvas.height,
@@ -61,30 +95,33 @@ for(let i=0;i<120;i++){
 }
 
 function updateStars(){
- let speed = game.boost ? 25 : 8;
-
+ let sp = game.boost ? 30 : game.speed;
  for(let s of game.stars){
-  s.z -= speed;
-  if(s.z<1) s.z=canvas.width;
+  s.z -= sp;
+  if(s.z<=1){
+   s.x=(Math.random()-0.5)*canvas.width;
+   s.y=(Math.random()-0.5)*canvas.height;
+   s.z=canvas.width;
+  }
  }
 }
 
 function drawStars(){
  for(let s of game.stars){
   let sc=200/s.z;
+  ctx.fillStyle="#fff";
   ctx.fillRect(s.x*sc+canvas.width/2,s.y*sc+canvas.height/2,2,2);
  }
 }
 
-/* ☄️ METEOR */
+/* ================= METEOR ================= */
 function spawnMeteor(){
- let speeds=[4,6,8,10];
-
+ const speeds=[4,6,8,10];
  game.meteors.push({
-  x:(Math.random()-0.3)*canvas.width, // ortalanmış spawn
-  y:(Math.random()-0.3)*canvas.height,
+  x:(Math.random()-0.15)*canvas.width, // 🔥 merkeze yakın
+  y:(Math.random()-0.15)*canvas.height,
   z:canvas.width,
-  size:20+Math.random()*30,
+  size:25+Math.random()*35,
   speed:speeds[Math.floor(Math.random()*speeds.length)]
  });
 }
@@ -94,7 +131,7 @@ function updateMeteors(){
  for(let m of game.meteors){
   m.z -= m.speed;
  }
- game.meteors=game.meteors.filter(m=>m.z>1);
+ game.meteors = game.meteors.filter(m=>m.z>1);
 }
 
 function drawMeteors(){
@@ -103,51 +140,49 @@ function drawMeteors(){
   let x=m.x*sc+canvas.width/2;
   let y=m.y*sc+canvas.height/2;
 
-  ctx.fillStyle="#777";
-
-  // kaya formu
+  ctx.fillStyle="#666";
   ctx.beginPath();
-  for(let i=0;i<6;i++){
-    let angle=i*Math.PI/3;
+  for(let i=0;i<7;i++){
+    let ang=i*Math.PI*2/7;
     let r=m.size*sc*(0.7+Math.random()*0.4);
-    ctx.lineTo(x+Math.cos(angle)*r,y+Math.sin(angle)*r);
+    ctx.lineTo(x+Math.cos(ang)*r,y+Math.sin(ang)*r);
   }
   ctx.fill();
  }
 }
 
-/* 🔫 SHOOT (MERKEZDEN İLERİ) */
+/* ================= SHOOT (FIXED CORE) ================= */
 function shoot(){
  let cx = game.playerX - canvas.width/2;
 
+ // 🔥 ortada birleşen çift atış
  game.bullets.push({x:cx-10,z:0});
  game.bullets.push({x:cx+10,z:0});
 }
 
-/* BULLETS */
+/* ================= BULLETS ================= */
 function updateBullets(){
  for(let b of game.bullets){
-  b.z += 30;
+  b.z += 28;
  }
- game.bullets=game.bullets.filter(b=>b.z<canvas.width);
+ game.bullets = game.bullets.filter(b=>b.z<canvas.width);
 }
 
 function drawBullets(){
  for(let b of game.bullets){
 
-  let sc=300/(canvas.width-b.z);
+  let sc = 300/(canvas.width-b.z);
+  let x = b.x*sc + canvas.width/2;
 
-  let x=b.x*sc+canvas.width/2;
-
-  // 🔥 DÜZ İLERİ AKIŞ (KRİTİK FIX)
-  let y=canvas.height-140 - b.z*0.9;
+  // 🔥 EN KRİTİK: DÜZ İLERİ AKIŞ
+  let y = canvas.height - 140 - b.z*0.9;
 
   ctx.fillStyle="#0ff";
   ctx.fillRect(x,y,4,14);
  }
 }
 
-/* 💥 COLLISION */
+/* ================= COLLISION ================= */
 function checkCollision(){
  for(let m of game.meteors){
 
@@ -169,32 +204,31 @@ function checkCollision(){
 
     m.hit=true;
     b.hit=true;
+    game.score+=10;
 
-    // 💥 PRO parçalanma
-    for(let i=0;i<12;i++){
+    // 💥 PRO debris
+    for(let i=0;i<14;i++){
      game.debris.push({
-      x:mx,
-      y:my,
-      vx:(Math.random()-0.5)*8,
-      vy:(Math.random()-0.5)*8,
+      x:mx,y:my,
+      vx:(Math.random()-0.5)*10,
+      vy:(Math.random()-0.5)*10,
       life:30
      });
     }
    }
   }
 
-  // 🚨 oyuncuya çarpma
-  if(m.z < 120 && !game.boost){
-    game.shield -=5;
+  // çarpışma
+  if(m.z<120 && !game.boost){
+   game.shield-=5;
   }
-
  }
 
  game.meteors=game.meteors.filter(m=>!m.hit);
  game.bullets=game.bullets.filter(b=>!b.hit);
 }
 
-/* 💥 DEBRIS */
+/* ================= DEBRIS ================= */
 function updateDebris(){
  for(let d of game.debris){
   d.x+=d.vx;
@@ -211,7 +245,7 @@ function drawDebris(){
  }
 }
 
-/* ⚡ BOOST */
+/* ================= BOOST ================= */
 document.getElementById("boostBtn").addEventListener("touchstart",()=>{
  if(game.boost) return;
  game.boost=true;
@@ -221,14 +255,16 @@ document.getElementById("boostBtn").addEventListener("touchstart",()=>{
 function updateBoost(){
  if(game.boost){
   game.boostTimer--;
-  if(game.boostTimer<=0){
-    game.boost=false;
-  }
+  if(game.boostTimer<=0) game.boost=false;
  }
 }
 
-/* LOOP */
+/* ================= LOOP ================= */
 function loop(){
+ if(!game.running){
+  requestAnimationFrame(loop);
+  return;
+ }
 
  game.playerX += (game.targetX-game.playerX)*0.1;
 
@@ -249,12 +285,12 @@ function loop(){
 }
 loop();
 
-/* INPUT */
+/* ================= INPUT ================= */
 canvas.addEventListener("touchmove",(e)=>{
  game.targetX = e.touches[0].clientX;
 });
 document.getElementById("fireBtn").addEventListener("touchstart",shoot);
-</script>
 
+</script>
 </body>
 </html>
