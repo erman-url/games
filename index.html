@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>SPACE RUNNER ULTRA</title>
+<title>SPACE RUNNER ULTRA PRO</title>
 
 <style>
 html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-ui;}
 #gameCanvas{position:fixed;top:0;left:0;width:100%;height:100%;}
 #cockpit{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;pointer-events:none;z-index:5;}
 #hud{position:fixed;top:10px;left:10px;color:#0ff;z-index:10;}
-#menu{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:20;}
-.btn{padding:12px 24px;margin:10px;background:#0ff;color:#000;border-radius:8px;font-weight:bold;}
+#shieldBar{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);width:200px;height:10px;background:#222;z-index:20;}
+#shield{height:100%;background:#0ff;width:100%;}
 #fireBtn{position:fixed;bottom:60px;right:25px;width:80px;height:80px;border-radius:50%;background:rgba(0,255,255,0.25);z-index:15;}
+#boostBtn{position:fixed;bottom:60px;left:25px;width:80px;height:80px;border-radius:50%;background:red;z-index:15;}
 </style>
 </head>
 
@@ -21,305 +22,239 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 <canvas id="gameCanvas"></canvas>
 <img src="image/cockpit.png" id="cockpit">
 <div id="fireBtn"></div>
+<div id="boostBtn"></div>
 
+<div id="shieldBar"><div id="shield"></div></div>
 <div id="hud">SCORE: <span id="score">0</span></div>
-
-<div id="menu">
-  <h2 style="color:#0ff">SPACE RUNNER</h2>
-  <div class="btn" onclick="startGame()">START</div>
-  <div class="btn" onclick="setWeapon('laser')">LASER</div>
-  <div class="btn" onclick="setWeapon('spread')">SPREAD</div>
-  <div class="btn" onclick="setWeapon('charge')">CHARGE</div>
-</div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+ canvas.width=innerWidth;
+ canvas.height=innerHeight;
 }
 resize();
-addEventListener("resize", resize);
+addEventListener("resize",resize);
 
-/* STATE */
-let game = {
-  running:false,
-  weapon:"laser",
-  score:0,
-  speed:8,
-  playerX:canvas.width/2,
-  targetX:canvas.width/2,
-  bullets:[],
-  meteors:[],
-  stars:[],
-  debris:[], // 💥 YENİ
-  shake:0,
-  charging:false,
-  chargePower:0,
-  bgObject:null
+let game={
+ running:true,
+ playerX:0,
+ targetX:0,
+ bullets:[],
+ meteors:[],
+ debris:[],
+ stars:[],
+ shield:100,
+ boost:false,
+ boostTimer:0
 };
 
-/* AUDIO */
-const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-let unlocked=false;
-
-function unlockAudio(){
-  if(unlocked) return;
-  const buffer = audioCtx.createBuffer(1,1,22050);
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(audioCtx.destination);
-  source.start(0);
-  unlocked=true;
-}
-
-function playShoot(){
-  const o=audioCtx.createOscillator();
-  const g=audioCtx.createGain();
-  o.frequency.value=600;
-  o.connect(g); g.connect(audioCtx.destination);
-  o.start();
-  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.07);
-}
-
-/* MENU */
-function startGame(){
-  unlockAudio();
-  document.getElementById("menu").style.display="none";
-  game.running=true;
-  initGyro();
-}
-
-function setWeapon(w){
-  game.weapon=w;
-}
-
-/* STARS */
+/* ⭐ STARS */
 for(let i=0;i<120;i++){
-  game.stars.push({
-    x:(Math.random()-0.5)*canvas.width,
-    y:(Math.random()-0.5)*canvas.height,
-    z:Math.random()*canvas.width
-  });
+ game.stars.push({
+  x:(Math.random()-0.5)*canvas.width,
+  y:(Math.random()-0.5)*canvas.height,
+  z:Math.random()*canvas.width
+ });
 }
 
 function updateStars(){
-  for(let s of game.stars){
-    s.z -= game.speed;
-    if(s.z<=1){
-      s.x=(Math.random()-0.5)*canvas.width;
-      s.y=(Math.random()-0.5)*canvas.height;
-      s.z=canvas.width;
-    }
-  }
+ let speed = game.boost ? 25 : 8;
+
+ for(let s of game.stars){
+  s.z -= speed;
+  if(s.z<1) s.z=canvas.width;
+ }
 }
 
 function drawStars(){
-  for(let s of game.stars){
-    let sc=200/s.z;
-    let x=s.x*sc+canvas.width/2;
-    let y=s.y*sc+canvas.height/2;
-    ctx.fillStyle="#fff";
-    ctx.fillRect(x,y,2,2);
-  }
+ for(let s of game.stars){
+  let sc=200/s.z;
+  ctx.fillRect(s.x*sc+canvas.width/2,s.y*sc+canvas.height/2,2,2);
+ }
 }
 
-/* METEOR */
+/* ☄️ METEOR */
 function spawnMeteor(){
-  game.meteors.push({
-    x:(Math.random()-0.5)*canvas.width,
-    y:(Math.random()-0.5)*canvas.height,
-    z:canvas.width,
-    size:20+Math.random()*40
-  });
+ let speeds=[4,6,8,10];
+
+ game.meteors.push({
+  x:(Math.random()-0.3)*canvas.width, // ortalanmış spawn
+  y:(Math.random()-0.3)*canvas.height,
+  z:canvas.width,
+  size:20+Math.random()*30,
+  speed:speeds[Math.floor(Math.random()*speeds.length)]
+ });
 }
-setInterval(spawnMeteor,600);
+setInterval(spawnMeteor,700);
 
 function updateMeteors(){
-  for(let m of game.meteors){
-    m.z -= game.speed;
-    if(m.z<1) m.remove=true;
-  }
-  game.meteors=game.meteors.filter(m=>!m.remove);
+ for(let m of game.meteors){
+  m.z -= m.speed;
+ }
+ game.meteors=game.meteors.filter(m=>m.z>1);
 }
 
 function drawMeteors(){
-  for(let m of game.meteors){
-    let sc=300/m.z;
-    let x=m.x*sc+canvas.width/2;
-    let y=m.y*sc+canvas.height/2;
-    let size=m.size*sc;
+ for(let m of game.meteors){
+  let sc=300/m.z;
+  let x=m.x*sc+canvas.width/2;
+  let y=m.y*sc+canvas.height/2;
 
-    ctx.fillStyle="#888";
-    ctx.beginPath();
-    ctx.arc(x,y,size,0,Math.PI*2);
-    ctx.fill();
+  ctx.fillStyle="#777";
+
+  // kaya formu
+  ctx.beginPath();
+  for(let i=0;i<6;i++){
+    let angle=i*Math.PI/3;
+    let r=m.size*sc*(0.7+Math.random()*0.4);
+    ctx.lineTo(x+Math.cos(angle)*r,y+Math.sin(angle)*r);
   }
+  ctx.fill();
+ }
 }
 
-/* 🔫 SHOOT FIX */
+/* 🔫 SHOOT (MERKEZDEN İLERİ) */
 function shoot(){
-  playShoot();
-  if(navigator.vibrate) navigator.vibrate(10);
+ let cx = game.playerX - canvas.width/2;
 
-  let cx = game.playerX - canvas.width/2;
-
-  game.bullets.push({x:cx-14,y:90,z:0,speed:32});
-  game.bullets.push({x:cx+14,y:90,z:0,speed:32});
+ game.bullets.push({x:cx-10,z:0});
+ game.bullets.push({x:cx+10,z:0});
 }
-
-/* INPUT */
-canvas.addEventListener("touchstart",()=>{unlockAudio();shoot();});
-canvas.addEventListener("click",()=>{unlockAudio();shoot();});
-document.getElementById("fireBtn").addEventListener("touchstart",shoot);
 
 /* BULLETS */
 function updateBullets(){
-  for(let b of game.bullets){
-    b.z += b.speed;
-  }
-  game.bullets=game.bullets.filter(b=>b.z<canvas.width);
+ for(let b of game.bullets){
+  b.z += 30;
+ }
+ game.bullets=game.bullets.filter(b=>b.z<canvas.width);
 }
 
 function drawBullets(){
-  for(let b of game.bullets){
-    let sc=300/(canvas.width-b.z);
-    let x=b.x*sc+canvas.width/2;
-    let y=(canvas.height-140)-(b.z*0.6);
+ for(let b of game.bullets){
 
-    ctx.fillStyle="#0ff";
-    ctx.fillRect(x,y,4,12);
-  }
+  let sc=300/(canvas.width-b.z);
+
+  let x=b.x*sc+canvas.width/2;
+
+  // 🔥 DÜZ İLERİ AKIŞ (KRİTİK FIX)
+  let y=canvas.height-140 - b.z*0.9;
+
+  ctx.fillStyle="#0ff";
+  ctx.fillRect(x,y,4,14);
+ }
 }
 
-/* 💥 COLLISION + PARÇALANMA */
+/* 💥 COLLISION */
 function checkCollision(){
-  for(let m of game.meteors){
+ for(let m of game.meteors){
 
-    let ms=300/m.z;
-    let mx=m.x*ms+canvas.width/2;
-    let my=m.y*ms+canvas.height/2;
-    let mSize=m.size*ms;
+  let ms=300/m.z;
+  let mx=m.x*ms+canvas.width/2;
+  let my=m.y*ms+canvas.height/2;
+  let size=m.size*ms;
 
-    for(let b of game.bullets){
+  for(let b of game.bullets){
 
-      let bs=300/(canvas.width-b.z);
-      let bx=b.x*bs+canvas.width/2;
-      let by=(canvas.height-140)-(b.z*0.6);
+   let bs=300/(canvas.width-b.z);
+   let bx=b.x*bs+canvas.width/2;
+   let by=canvas.height-140-b.z*0.9;
 
-      let dx=mx-bx;
-      let dy=my-by;
+   let dx=mx-bx;
+   let dy=my-by;
 
-      if(dx*dx+dy*dy < mSize*mSize){
+   if(dx*dx+dy*dy < size*size){
 
-        m.hit=true;
-        b.hit=true;
-        game.score+=10;
+    m.hit=true;
+    b.hit=true;
 
-        for(let i=0;i<8;i++){
-          game.debris.push({
-            x:mx,
-            y:my,
-            vx:(Math.random()-0.5)*6,
-            vy:(Math.random()-0.5)*6,
-            life:30
-          });
-        }
-      }
+    // 💥 PRO parçalanma
+    for(let i=0;i<12;i++){
+     game.debris.push({
+      x:mx,
+      y:my,
+      vx:(Math.random()-0.5)*8,
+      vy:(Math.random()-0.5)*8,
+      life:30
+     });
     }
+   }
   }
 
-  game.meteors=game.meteors.filter(m=>!m.hit);
-  game.bullets=game.bullets.filter(b=>!b.hit);
+  // 🚨 oyuncuya çarpma
+  if(m.z < 120 && !game.boost){
+    game.shield -=5;
+  }
+
+ }
+
+ game.meteors=game.meteors.filter(m=>!m.hit);
+ game.bullets=game.bullets.filter(b=>!b.hit);
 }
 
 /* 💥 DEBRIS */
 function updateDebris(){
-  for(let d of game.debris){
-    d.x+=d.vx;
-    d.y+=d.vy;
-    d.life--;
-  }
-  game.debris=game.debris.filter(d=>d.life>0);
+ for(let d of game.debris){
+  d.x+=d.vx;
+  d.y+=d.vy;
+  d.life--;
+ }
+ game.debris=game.debris.filter(d=>d.life>0);
 }
 
 function drawDebris(){
-  ctx.fillStyle="#aaa";
-  for(let d of game.debris){
-    ctx.fillRect(d.x,d.y,3,3);
+ ctx.fillStyle="#aaa";
+ for(let d of game.debris){
+  ctx.fillRect(d.x,d.y,3,3);
+ }
+}
+
+/* ⚡ BOOST */
+document.getElementById("boostBtn").addEventListener("touchstart",()=>{
+ if(game.boost) return;
+ game.boost=true;
+ game.boostTimer=600;
+});
+
+function updateBoost(){
+ if(game.boost){
+  game.boostTimer--;
+  if(game.boostTimer<=0){
+    game.boost=false;
   }
-}
-
-/* BG */
-const imgs={
- sun:new Image(),
- nebula:new Image(),
- meteor:new Image(),
- meteor1:new Image()
-};
-imgs.sun.src="image/sun.png";
-imgs.nebula.src="image/nebula.png";
-imgs.meteor.src="image/meteor.png";
-imgs.meteor1.src="image/meteor1.png";
-
-function spawnBG(){
- if(game.bgObject) return;
- let keys=Object.keys(imgs);
- let key=keys[Math.floor(Math.random()*keys.length)];
- game.bgObject={img:imgs[key],x:Math.random()*canvas.width,y:-200,size:200+Math.random()*200};
-}
-setInterval(spawnBG,4000);
-
-function updateBG(){
- if(!game.bgObject) return;
- game.bgObject.y+=1;
- if(game.bgObject.y>canvas.height+200) game.bgObject=null;
-}
-
-function drawBG(){
- if(!game.bgObject) return;
- ctx.globalAlpha=0.6;
- ctx.drawImage(game.bgObject.img,game.bgObject.x,game.bgObject.y,game.bgObject.size,game.bgObject.size);
- ctx.globalAlpha=1;
-}
-
-/* GYRO */
-function initGyro(){
- window.addEventListener("deviceorientation",(e)=>{
-  game.targetX = canvas.width/2 + e.gamma*10;
- });
+ }
 }
 
 /* LOOP */
 function loop(){
- if(!game.running){
-  requestAnimationFrame(loop);
-  return;
- }
 
  game.playerX += (game.targetX-game.playerX)*0.1;
 
- ctx.fillStyle="black";
+ ctx.fillStyle="#000";
  ctx.fillRect(0,0,canvas.width,canvas.height);
 
  updateStars(); drawStars();
- updateBG(); drawBG();
  updateMeteors(); drawMeteors();
  updateBullets(); drawBullets();
  checkCollision();
  updateDebris(); drawDebris();
+ updateBoost();
 
  document.getElementById("score").innerText=game.score;
+ document.getElementById("shield").style.width=game.shield+"%";
 
  requestAnimationFrame(loop);
 }
 loop();
 
+/* INPUT */
 canvas.addEventListener("touchmove",(e)=>{
- game.targetX=e.touches[0].clientX;
+ game.targetX = e.touches[0].clientX;
 });
+document.getElementById("fireBtn").addEventListener("touchstart",shoot);
 </script>
+
 </body>
 </html>
