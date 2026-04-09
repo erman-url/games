@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SPACE RUNNER ULTRA</title>
+
+<style>
+html,body{
+  margin:0;
+  padding:0;
+  overflow:hidden;
+  background:#000;
+  font-family:system-ui;
+}
+
+/* CANVAS */
+#gameCanvas{
+  position:fixed;
+  top:0;left:0;
+  width:100%;height:100%;
+}
+
+/* COCKPIT */
+#cockpit{
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  max-width:500px;
+  pointer-events:none;
+  z-index:5;
+}
+
+/* HUD */
+#hud{
+  position:fixed;
+  top:10px;left:10px;
+  color:#0ff;
+  z-index:10;
+}
+
+/* MENU */
+#menu{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(10px);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  z-index:20;
+}
+
+.btn{
+  padding:12px 24px;
+  margin:10px;
+  background:#0ff;
+  color:#000;
+  border-radius:8px;
+  font-weight:bold;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<img src="image\cockpit.png" id="cockpit">
+
+<div id="hud">SCORE: <span id="score">0</span></div>
+
+<div id="menu">
+  <h2 style="color:#0ff">SPACE RUNNER</h2>
+  <div class="btn" onclick="startGame()">START</div>
+  <div class="btn" onclick="setWeapon('laser')">LASER</div>
+  <div class="btn" onclick="setWeapon('spread')">SPREAD</div>
+  <div class="btn" onclick="setWeapon('charge')">CHARGE</div>
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
+}
+resize();
+addEventListener("resize", resize);
+
+/* ================= STATE ================= */
+
+let game = {
+  running:false,
+  weapon:"laser",
+  score:0,
+  speed:8,
+  playerX:canvas.width/2,
+  targetX:canvas.width/2,
+  bullets:[],
+  meteors:[],
+  stars:[],
+  planets:[],
+  comets:[],
+  shake:0,
+  charging:false,
+  chargePower:0
+};
+
+/* ================= MENU ================= */
+
+function startGame(){
+  document.getElementById("menu").style.display="none";
+  game.running = true;
+}
+
+function setWeapon(w){
+  game.weapon = w;
+}
+
+/* ================= AUDIO ================= */
+
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+function playShoot(){
+  let o=audioCtx.createOscillator();
+  let g=audioCtx.createGain();
+  o.frequency.value=600;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start();
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.07);
+}
+
+/* ================= STARS ================= */
+
+for(let i=0;i<120;i++){
+  game.stars.push({
+    x:(Math.random()-0.5)*canvas.width,
+    y:(Math.random()-0.5)*canvas.height,
+    z:Math.random()*canvas.width
+  });
+}
+
+function updateStars(){
+  for(let s of game.stars){
+    s.z -= game.speed;
+    if(s.z<=1){
+      s.x=(Math.random()-0.5)*canvas.width;
+      s.y=(Math.random()-0.5)*canvas.height;
+      s.z=canvas.width;
+    }
+  }
+}
+
+function drawStars(){
+  for(let s of game.stars){
+    let sc=200/s.z;
+    let x=s.x*sc+canvas.width/2;
+    let y=s.y*sc+canvas.height/2;
+    ctx.fillStyle="#fff";
+    ctx.fillRect(x,y,2,2);
+  }
+}
+
+/* ================= PLANETS ================= */
+
+function spawnPlanet(){
+  game.planets.push({
+    x:(Math.random()-0.5)*canvas.width,
+    y:(Math.random()-0.5)*canvas.height,
+    z:canvas.width,
+    size:80+Math.random()*120
+  });
+}
+setInterval(spawnPlanet,6000);
+
+function updatePlanets(){
+  for(let p of game.planets){
+    p.z -= game.speed*0.5;
+    if(p.z<1) p.remove=true;
+  }
+  game.planets=game.planets.filter(p=>!p.remove);
+}
+
+function drawPlanets(){
+  for(let p of game.planets){
+    let sc=200/p.z;
+    let x=p.x*sc+canvas.width/2;
+    let y=p.y*sc+canvas.height/2;
+    let size=p.size*sc;
+
+    ctx.fillStyle="#223";
+    ctx.beginPath();
+    ctx.arc(x,y,size,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+/* ================= COMETS ================= */
+
+function spawnComet(){
+  game.comets.push({
+    x:-canvas.width/2,
+    y:(Math.random()-0.5)*canvas.height,
+    z:canvas.width
+  });
+}
+setInterval(spawnComet,4000);
+
+function updateComets(){
+  for(let c of game.comets){
+    c.z -= game.speed*2;
+    c.x += 10;
+    if(c.z<1) c.remove=true;
+  }
+  game.comets=game.comets.filter(c=>!c.remove);
+}
+
+function drawComets(){
+  for(let c of game.comets){
+    let sc=200/c.z;
+    let x=c.x*sc+canvas.width/2;
+    let y=c.y*sc+canvas.height/2;
+
+    ctx.strokeStyle="#fff";
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.lineTo(x-20,y+10);
+    ctx.stroke();
+  }
+}
+
+/* ================= METEORS ================= */
+
+function spawnMeteor(){
+  game.meteors.push({
+    x:(Math.random()-0.5)*canvas.width,
+    y:(Math.random()-0.5)*canvas.height,
+    z:canvas.width,
+    size:20+Math.random()*40
+  });
+}
+setInterval(spawnMeteor,700);
+
+function updateMeteors(){
+  for(let m of game.meteors){
+    m.z -= game.speed;
+    if(m.z<1) m.remove=true;
+  }
+  game.meteors=game.meteors.filter(m=>!m.remove);
+}
+
+function drawMeteors(){
+  for(let m of game.meteors){
+    let sc=300/m.z;
+    let x=m.x*sc+canvas.width/2;
+    let y=m.y*sc+canvas.height/2;
+    let size=m.size*sc;
+
+    ctx.fillStyle="#888";
+    ctx.beginPath();
+    ctx.arc(x,y,size,0,Math.PI*2);
+    ctx.fill();
+  }
+}
+
+/* ================= WEAPONS ================= */
+
+function shoot(){
+  playShoot();
+
+  let cx=game.playerX-canvas.width/2;
+
+  if(game.weapon==="laser"){
+    game.bullets.push({x:cx,y:80,z:0,speed:30});
+  }
+
+  if(game.weapon==="spread"){
+    for(let i=-1;i<=1;i++){
+      game.bullets.push({x:cx+i*20,y:80,z:0,speed:25});
+    }
+  }
+
+  if(game.weapon==="charge"){
+    let power = game.chargePower || 1;
+    game.bullets.push({x:cx,y:80,z:0,speed:20,size:power*2});
+    game.chargePower=0;
+  }
+}
+
+canvas.addEventListener("touchstart",()=>{
+  if(game.weapon==="charge"){
+    game.charging=true;
+  }else{
+    shoot();
+  }
+});
+
+canvas.addEventListener("touchend",()=>{
+  if(game.weapon==="charge"){
+    shoot();
+    game.charging=false;
+  }
+});
+
+/* ================= BULLETS ================= */
+
+function updateBullets(){
+  for(let b of game.bullets){
+    b.z += b.speed;
+  }
+  game.bullets=game.bullets.filter(b=>b.z<canvas.width);
+}
+
+function drawBullets(){
+  for(let b of game.bullets){
+    let sc=300/(canvas.width-b.z);
+    let x=b.x*sc+canvas.width/2;
+    let y=b.y*sc+canvas.height-120;
+
+    ctx.fillStyle="#0ff";
+    ctx.fillRect(x,y,4*(b.size||1),12*(b.size||1));
+  }
+}
+
+/* ================= LOOP ================= */
+
+function loop(){
+  if(!game.running){
+    requestAnimationFrame(loop);
+    return;
+  }
+
+  if(game.charging) game.chargePower+=0.1;
+
+  game.playerX += (game.targetX-game.playerX)*0.1;
+
+  ctx.fillStyle="black";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  updateStars(); drawStars();
+  updatePlanets(); drawPlanets();
+  updateComets(); drawComets();
+  updateMeteors(); drawMeteors();
+  updateBullets(); drawBullets();
+
+  document.getElementById("score").innerText = game.score;
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+
+/* ================= CONTROLS ================= */
+
+canvas.addEventListener("touchmove",(e)=>{
+  game.targetX = e.touches[0].clientX;
+});
+
+/* AUTO FIRE */
+setInterval(()=>{
+  if(game.running && game.weapon!=="charge") shoot();
+},250);
+
+</script>
+</body>
+</html>
