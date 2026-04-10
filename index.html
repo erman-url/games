@@ -358,7 +358,7 @@ function shoot(){
   // basit ve stabil spawn
   game.bullets.push({
     x: game.playerX,
-    y: 0,
+     y: canvas.height * 0.25,
     z: 80
   });
 }
@@ -378,7 +378,7 @@ function drawBullets(){
     const p = project(b.x, b.y, b.z);
     // ekranda görünmeyenleri çizme (hafif optimizasyon)
     if(p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) continue;
-    ctx.fillRect(p.x, p.y, 4, 12);
+ctx.fillRect(p.x - 3 * p.scale, p.y, 6 * p.scale, 18 * p.scale);
   }
 }
 
