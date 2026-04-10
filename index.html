@@ -330,14 +330,39 @@ function loop(){
 }
 loop();
 
-/* ================= INPUT ================= */
-canvas.addEventListener("touchmove",(e)=>{
- game.targetX=e.touches[0].clientX;
-});
+/* ================= INPUT (FULL FIX) ================= */
 
-// 🔥 KESİN ATEŞ FIX
-document.body.addEventListener("touchstart",shoot);
-document.getElementById("fireBtn").addEventListener("touchstart",shoot);
+// hareket
+canvas.addEventListener("touchmove",(e)=>{
+ if(e.touches.length>0){
+  game.targetX = e.touches[0].clientX;
+ }
+},{passive:true});
+
+/* ================= INPUT FINAL FIX ================= */
+
+// hareket
+canvas.addEventListener("touchmove",(e)=>{
+ if(e.touches.length>0){
+  game.targetX = e.touches[0].clientX;
+ }
+},{passive:true});
+
+// 🔥 ATEŞ (EN STABİL YÖNTEM)
+document.addEventListener("touchstart", function(e){
+
+ // menü açıksa ateş etme
+ if(!game.running) return;
+
+ shoot();
+
+}, {passive:true});
+
+// 🔥 BUTON
+document.getElementById("fireBtn").addEventListener("touchstart", function(e){
+ e.stopPropagation();
+ shoot();
+}, {passive:true});
 
 </script>
 
