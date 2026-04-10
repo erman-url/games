@@ -634,11 +634,10 @@ function loop(ts){
 function startGame(){
   document.getElementById("menu").style.display     = "none";
   document.getElementById("gameOver").style.display = "none";
-  document.addEventListener("DOMContentLoaded", () => {
-  initGame();
-  requestAnimationFrame(loop);
-});
-  game.running = true;
+
+  initGame();              // 🔴 BURASI KRİTİK
+  game.running = true;     // 🔴 SONRA TRUE
+
   bgTimer  = 0;
   metTimer = 0;
   lastTime = performance.now();
@@ -700,8 +699,11 @@ document.getElementById("boostBtn").addEventListener("touchstart", (e) => {
 document.getElementById("boostBtn").addEventListener("click", tryBoost);  // masaüstü
 
 /* ── BAŞLAT ── */
-initGame();
-requestAnimationFrame(loop);
+document.addEventListener("DOMContentLoaded", () => {
+  initGame();
+  requestAnimationFrame(loop);
+});
+
 </script>
 
 </body>
