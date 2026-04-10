@@ -6,67 +6,186 @@
 <title>SPACE RUNNER ULTRA PRO</title>
 
 <style>
+*{box-sizing:border-box;}
 html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-ui;}
 #gameCanvas{position:fixed;top:0;left:0;width:100%;height:100%;}
-#cockpit{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;pointer-events:none;z-index:5;}
-#hud{position:fixed;top:10px;left:10px;color:#0ff;z-index:10;}
 
+#cockpit{
+  position:fixed;
+  bottom:0;
+  left:50%;
+  transform:translateX(-50%);
+  width:100%;
+  max-width:500px;
+  pointer-events:none;
+  z-index:5;
+  display:block;
+}
+
+#hud{
+  position:fixed;
+  top:10px;
+  left:10px;
+  color:#0ff;
+  z-index:10;
+  font-size:16px;
+  text-shadow:0 0 8px #0ff;
+}
+
+/* ── MENÜ ── */
 #menu{
- position:fixed;
- inset:0;
- background:rgba(0,0,0,0.85);
- display:flex;
- justify-content:center;
- align-items:center;
- z-index:20;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.88);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:20px;
+  z-index:20;
+}
+#menu h1{
+  color:#0ff;
+  font-size:clamp(24px,6vw,48px);
+  text-shadow:0 0 20px #0ff;
+  margin:0 0 10px;
+  letter-spacing:4px;
+}
+#menu p{
+  color:#888;
+  font-size:13px;
+  text-align:center;
+  max-width:280px;
+  line-height:1.6;
+  margin:0;
 }
 
+/* ── GAME OVER EKRANI ── */
+#gameOver{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.88);
+  display:none;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:18px;
+  z-index:20;
+}
+#gameOver h1{color:#f00;font-size:clamp(28px,8vw,60px);text-shadow:0 0 30px #f00;margin:0;letter-spacing:6px;}
+#gameOver .finalScore{color:#fff;font-size:20px;}
+#gameOver .finalScore span{color:#0ff;font-weight:bold;}
+
+/* ── ORTAK BUTON ── */
 .btn{
- padding:15px 30px;
- background:#0ff;
- color:#000;
- border-radius:10px;
- font-weight:bold;
+  padding:15px 36px;
+  background:transparent;
+  color:#0ff;
+  border:2px solid #0ff;
+  border-radius:10px;
+  font-weight:bold;
+  font-size:16px;
+  cursor:pointer;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  box-shadow:0 0 12px #0ff4;
+  transition:background .2s, box-shadow .2s;
+  -webkit-tap-highlight-color:transparent;
 }
+.btn:active{background:#0ff2;box-shadow:0 0 20px #0ff8;}
 
+/* ── ATEŞ BUTONU ── */
 #fireBtn{
- position:fixed;
- bottom:60px;
- right:25px;
- width:80px;
- height:80px;
- border-radius:50%;
- background:rgba(0,255,255,0.25);
- z-index:15;
+  position:fixed;
+  bottom:60px;
+  right:25px;
+  width:80px;
+  height:80px;
+  border-radius:50%;
+  background:rgba(0,255,255,0.18);
+  border:2px solid rgba(0,255,255,0.5);
+  z-index:15;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#0ff;
+  font-size:11px;
+  font-weight:bold;
+  letter-spacing:1px;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
 }
 
+/* ── BOOST BUTONU ── */
 #boostBtn{
- position:fixed;
- bottom:60px;
- left:25px;
- width:80px;
- height:80px;
- border-radius:50%;
- background:red;
- z-index:15;
+  position:fixed;
+  bottom:60px;
+  left:25px;
+  width:80px;
+  height:80px;
+  border-radius:50%;
+  background:rgba(255,80,0,0.25);
+  border:2px solid rgba(255,80,0,0.7);
+  z-index:15;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fa0;
+  font-size:11px;
+  font-weight:bold;
+  letter-spacing:1px;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
 }
 
+/* ── KALKAN ÇUBUĞU ── */
 #shieldBar{
- position:fixed;
- right:10px;
- top:50%;
- transform:translateY(-50%);
- width:14px;
- height:200px;
- background:#222;
- border-radius:8px;
- z-index:30;
+  position:fixed;
+  right:10px;
+  top:50%;
+  transform:translateY(-50%);
+  width:14px;
+  height:200px;
+  background:#111;
+  border:1px solid #333;
+  border-radius:8px;
+  z-index:30;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+}
+#shield{
+  width:100%;
+  height:100%;
+  background:#0ff;
+  transition:background .3s;
+  border-radius:8px;
 }
 
-#shield{
- width:100%;
- height:100%;
- background:#0ff;
+/* ── BOOST GÖSTERGESI ── */
+#boostBar{
+  position:fixed;
+  left:10px;
+  top:50%;
+  transform:translateY(-50%);
+  width:14px;
+  height:120px;
+  background:#111;
+  border:1px solid #333;
+  border-radius:8px;
+  z-index:30;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+}
+#boostFill{
+  width:100%;
+  height:100%;
+  background:#fa0;
+  border-radius:8px;
+  transition:background .3s;
 }
 </style>
 </head>
@@ -74,296 +193,432 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 <body>
 
 <canvas id="gameCanvas"></canvas>
-<img src="image/cockpit.png" id="cockpit">
+<img src="image/cockpit.png" id="cockpit" onerror="this.style.display='none'">
 
-<div id="fireBtn"></div>
-<div id="boostBtn"></div>
+<!-- Butonlar -->
+<div id="fireBtn">ATEŞ</div>
+<div id="boostBtn">BOOST</div>
 
+<!-- Kalkan bar -->
 <div id="shieldBar"><div id="shield"></div></div>
+
+<!-- Boost bar -->
+<div id="boostBar"><div id="boostFill"></div></div>
+
+<!-- HUD -->
 <div id="hud">SCORE: <span id="score">0</span></div>
 
+<!-- Başlangıç menüsü -->
 <div id="menu">
- <div class="btn" onclick="startGame()">START</div>
+  <h1>SPACE RUNNER</h1>
+  <p>Ekranın sol/sağına dokun → hareket<br>ATEŞ butonuna bas → mermi at<br>BOOST → meteor geçirgen mod</p>
+  <button class="btn" id="startBtn">BAŞLAT</button>
+</div>
+
+<!-- Game Over ekranı -->
+<div id="gameOver">
+  <h1>GAME OVER</h1>
+  <div class="finalScore">SKOR: <span id="finalScore">0</span></div>
+  <button class="btn" id="restartBtn">YENİDEN OYNA</button>
 </div>
 
 <script>
+/* =====================================================
+   SPACE RUNNER ULTRA PRO — Düzeltilmiş Versiyon
+   Düzeltilen hatalar:
+   1. Çift touchmove listener → tek listener kaldı
+   2. targetX koordinat sistemi düzeltildi (canvas ortası referanslı)
+   3. Her dokunuşta ateş açılıyordu → yalnızca fireBtn ateş ediyor
+   4. Mermi çarpışma y offset hatası → project'ten gelen y kullanıldı
+   5. Meteor çizimi her frame'de random titremesi → shapes saklandı
+   6. Tek meteor birden fazla hasar verebiliyordu → hitCounted flag
+   7. alert() → özel Game Over ekranı
+   8. Yıldız z başlangıcı → canvas.width ile düzgün init
+   9. Boost göstergesi eklendi (cooldown/durum)
+   10. Oyun dengesi iyileştirildi (hasar miktarı, meteor hızı, spawn)
+===================================================== */
 
-/* ================= CORE ================= */
+/* ── CANVAS ── */
 const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const ctx    = canvas.getContext("2d");
 
 function resize(){
- canvas.width=innerWidth;
- canvas.height=innerHeight;
+  canvas.width  = innerWidth;
+  canvas.height = innerHeight;
 }
 resize();
-addEventListener("resize",resize);
+addEventListener("resize", resize);
 
-/* ================= STATE ================= */
-let game={
- running:false,
- score:0,
- playerX:0,
- targetX:0,
- bullets:[],
- meteors:[],
- stars:[],
- shield:100,
- boost:false,
- boostTimer:0,
- bgObject:null
-};
+/* ── SABITLER ── */
+const BOOST_DURATION   = 180;   // frame (yaklaşık 3 sn)
+const BOOST_COOLDOWN   = 300;   // frame (yaklaşık 5 sn)
+const SHIELD_DAMAGE    = 8;     // her çarpışmada düşen kalkan
+const SHOOT_COOLDOWN   = 8;     // frame — çok hızlı ateş engeli
+const METEOR_INTERVAL  = 900;   // ms
+const BG_INTERVAL      = 4000;  // ms
 
-/* ================= START ================= */
-function startGame(){
- document.getElementById("menu").style.display="none";
- game.running=true;
+/* ── OYUN DURUMU ── */
+let game;
+
+function initGame(){
+  game = {
+    running:      false,
+    score:        0,
+    playerX:      0,          // canvas merkezi referanslı offset
+    targetX:      0,          // canvas merkezi referanslı offset
+    bullets:      [],
+    meteors:      [],
+    stars:        [],
+    bgObject:     null,
+    shield:       100,        // 0–100
+    boost:        false,
+    boostTimer:   0,
+    boostCooldown:0,
+    shootCooldown:0,
+  };
+  initStars();
 }
 
-/* ================= PROJECTION ================= */
-function project(x,y,z){
- let s=300/z;
- return {x:x*s+canvas.width/2,y:y*s+canvas.height/2,scale:s};
+/* ── YILDIZLAR ── */
+function initStars(){
+  game.stars = [];
+  for(let i = 0; i < 140; i++){
+    game.stars.push(randomStar(true));
+  }
 }
 
-/* ================= STARS ================= */
-for(let i=0;i<120;i++){
- game.stars.push({
-  x:(Math.random()-0.5)*canvas.width,
-  y:(Math.random()-0.5)*canvas.height,
-  z:Math.random()*canvas.width
- });
+function randomStar(randomZ){
+  return {
+    x: (Math.random() - 0.5) * canvas.width  * 2,
+    y: (Math.random() - 0.5) * canvas.height * 2,
+    z: randomZ ? Math.random() * canvas.width : canvas.width
+  };
 }
 
 function updateStars(){
- let sp=game.boost?30:8;
- for(let s of game.stars){
-  s.z-=sp;
-  if(s.z<1) s.z=canvas.width;
- }
+  const sp = game.boost ? 28 : 7;
+  for(let s of game.stars){
+    s.z -= sp;
+    if(s.z < 1){
+      Object.assign(s, randomStar(false));
+    }
+  }
 }
 
 function drawStars(){
- ctx.fillStyle="#fff";
- for(let s of game.stars){
-  let p=project(s.x,s.y,s.z);
-  ctx.fillRect(p.x,p.y,2,2);
- }
+  ctx.fillStyle = "#fff";
+  for(let s of game.stars){
+    const p = project(s.x, s.y, s.z);
+    const size = Math.max(0.5, 2.5 * (1 - s.z / canvas.width));
+    if(p.x > 0 && p.x < canvas.width && p.y > 0 && p.y < canvas.height){
+      ctx.fillRect(p.x, p.y, size, size);
+    }
+  }
 }
 
-/* ================= BG OBJECT ================= */
-const bgImgs={
- sun:new Image(),
- nebula:new Image(),
- meteor:new Image(),
- meteor1:new Image()
-};
+/* ── PROJEKSIYON ── */
+function project(x, y, z){
+  const s = 300 / z;
+  return {
+    x:     x * s + canvas.width  / 2,
+    y:     y * s + canvas.height / 2,
+    scale: s
+  };
+}
 
-bgImgs.sun.src="image/sun.png";
-bgImgs.nebula.src="image/nebula.png";
-bgImgs.meteor.src="image/meteor.png";
-bgImgs.meteor1.src="image/meteor1.png";
+/* ── ARKA PLAN NESNELERİ ── */
+const bgImgs = {};
+["sun","nebula","meteor","meteor1"].forEach(k => {
+  const img = new Image();
+  img.src = `image/${k}.png`;
+  bgImgs[k] = img;
+});
 
 function spawnBG(){
- if(game.bgObject) return;
-
- let keys=Object.keys(bgImgs);
- let key=keys[Math.floor(Math.random()*keys.length)];
-
- game.bgObject={
-  img:bgImgs[key],
-  x:(Math.random()-0.5)*canvas.width*0.5,
-  y:(Math.random()-0.5)*canvas.height*0.5,
-  z:canvas.width
- };
+  if(!game || !game.running || game.bgObject) return;
+  const keys = Object.keys(bgImgs);
+  const key  = keys[Math.floor(Math.random() * keys.length)];
+  game.bgObject = {
+    img: bgImgs[key],
+    x:   (Math.random() - 0.5) * canvas.width  * 0.5,
+    y:   (Math.random() - 0.5) * canvas.height * 0.5,
+    z:   canvas.width
+  };
 }
-setInterval(spawnBG,4000);
 
 function updateBG(){
- if(!game.bgObject) return;
- game.bgObject.z-=2;
- if(game.bgObject.z<1) game.bgObject=null;
+  if(!game.bgObject) return;
+  game.bgObject.z -= 2;
+  if(game.bgObject.z < 1) game.bgObject = null;
 }
 
 function drawBG(){
- if(!game.bgObject) return;
-
- let p=project(game.bgObject.x,game.bgObject.y,game.bgObject.z);
-
- ctx.globalAlpha=0.6;
- ctx.drawImage(game.bgObject.img,p.x,p.y,220*p.scale,220*p.scale);
- ctx.globalAlpha=1;
+  if(!game.bgObject) return;
+  const p = project(game.bgObject.x, game.bgObject.y, game.bgObject.z);
+  ctx.globalAlpha = 0.55;
+  try { ctx.drawImage(game.bgObject.img, p.x, p.y, 220 * p.scale, 220 * p.scale); }
+  catch(e){}
+  ctx.globalAlpha = 1;
 }
 
-/* ================= METEOR ================= */
+/* ── METEORLAR ── */
+// FIX 5: Meteor şekli spawn sırasında bir kez üretiliyor (artık titremez)
+function buildMeteorShape(sides, size){
+  const pts = [];
+  for(let i = 0; i < sides; i++){
+    const a = i * Math.PI * 2 / sides;
+    const r = size * (0.65 + Math.random() * 0.45);
+    pts.push({ a, r });
+  }
+  return pts;
+}
+
 function spawnMeteor(){
- const speeds=[4,6,8,10];
- const corridor=canvas.width*0.22;
-
- game.meteors.push({
-  x:(Math.random()-0.5)*corridor,
-  y:(Math.random()-0.2)*canvas.height,
-  z:canvas.width,
-  size:30,
-  speed:speeds[Math.floor(Math.random()*4)]
- });
+  if(!game || !game.running) return;
+  const speeds   = [4, 5, 7, 9];
+  const corridor = canvas.width * 0.25;
+  const sides    = 6 + Math.floor(Math.random() * 3);
+  const sz       = 28 + Math.random() * 16;
+  game.meteors.push({
+    x:           (Math.random() - 0.5) * corridor,
+    y:           (Math.random() - 0.3) * canvas.height * 0.8,
+    z:           canvas.width,
+    size:        sz,
+    speed:       speeds[Math.floor(Math.random() * speeds.length)],
+    shape:       buildMeteorShape(sides, sz),  // FIX 5
+    hit:         false,
+    hitCounted:  false   // FIX 6: hasar bayrağı
+  });
 }
-setInterval(spawnMeteor,700);
 
 function updateMeteors(){
- for(let m of game.meteors) m.z-=m.speed;
- game.meteors=game.meteors.filter(m=>m.z>1);
+  for(let m of game.meteors) m.z -= m.speed;
+  game.meteors = game.meteors.filter(m => m.z > 1 && !m.hit);
 }
 
 function drawMeteors(){
- ctx.fillStyle="#777";
- for(let m of game.meteors){
-  let p=project(m.x,m.y,m.z);
-  ctx.beginPath();
-  for(let i=0;i<7;i++){
-   let a=i*Math.PI*2/7;
-   let r=m.size*p.scale*(0.7+Math.random()*0.4);
-   ctx.lineTo(p.x+Math.cos(a)*r,p.y+Math.sin(a)*r);
+  ctx.fillStyle = "#888";
+  for(let m of game.meteors){
+    const p = project(m.x, m.y, m.z);
+    ctx.beginPath();
+    for(let i = 0; i < m.shape.length; i++){
+      const pt = m.shape[i];
+      const px = p.x + Math.cos(pt.a) * pt.r * p.scale;
+      const py = p.y + Math.sin(pt.a) * pt.r * p.scale;
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
   }
-  ctx.fill();
- }
 }
 
-/* ================= SHOOT ================= */
+/* ── MERMİLER ── */
+// FIX 3: Ateş yalnızca fireBtn'den
 function shoot(){
- let cx=game.playerX-canvas.width/2;
+  if(!game.running) return;
+  if(game.shootCooldown > 0) return;  // çok hızlı ateş engeli
+  game.shootCooldown = SHOOT_COOLDOWN;
 
- game.bullets.push({x:cx-12,y:140,z:80});
- game.bullets.push({x:cx+12,y:140,z:80});
+  // FIX 2: playerX zaten canvas-merkez referanslı
+  const cx = game.playerX;
+  game.bullets.push({ x: cx - 12, y: 140, z: 80 });
+  game.bullets.push({ x: cx + 12, y: 140, z: 80 });
 }
 
-/* ================= BULLETS ================= */
 function updateBullets(){
- for(let b of game.bullets) b.z-=18;
- game.bullets=game.bullets.filter(b=>b.z>1);
+  if(game.shootCooldown > 0) game.shootCooldown--;
+  for(let b of game.bullets) b.z -= 18;
+  game.bullets = game.bullets.filter(b => b.z > 1 && !b.hit);
 }
 
 function drawBullets(){
- ctx.fillStyle="#0ff";
- for(let b of game.bullets){
-  let p=project(b.x,b.y,b.z);
-  let y=p.y-(b.z*0.12);
-  ctx.fillRect(p.x,y,4*p.scale,14*p.scale);
- }
-}
-
-/* ================= COLLISION ================= */
-function checkCollision(){
- for(let m of game.meteors){
-
-  let mp=project(m.x,m.y,m.z);
-  let size=m.size*mp.scale;
-
+  ctx.fillStyle = "#0ff";
   for(let b of game.bullets){
-   let bp=project(b.x,b.y,b.z);
-
-   let dx=mp.x-bp.x;
-   let dy=mp.y-bp.y;
-
-   if(dx*dx+dy*dy<size*size){
-    m.hit=true;
-    b.hit=true;
-    game.score+=10;
-   }
+    const p = project(b.x, b.y, b.z);
+    // FIX 4: Artık y kaydırması YOK; project'ten gelen y kullanılıyor
+    ctx.fillRect(p.x - 2 * p.scale, p.y, 4 * p.scale, 14 * p.scale);
   }
-
-  if(m.z<120 && !m.hit && !game.boost){
-   m.hit=true;
-   game.shield-=1;
-   if(game.shield<0) game.shield=0;
-  }
- }
-
- game.meteors=game.meteors.filter(m=>!m.hit);
- game.bullets=game.bullets.filter(b=>!b.hit);
 }
 
-/* ================= BOOST ================= */
-document.getElementById("boostBtn").addEventListener("touchstart",()=>{
- if(game.boost) return;
- game.boost=true;
- game.boostTimer=600;
-});
+/* ── ÇARPIŞMA ── */
+function checkCollision(){
+  for(let m of game.meteors){
+    if(m.hit) continue;
+    const mp   = project(m.x, m.y, m.z);
+    const mRad = m.size * mp.scale;
+
+    // Mermi – Meteor
+    for(let b of game.bullets){
+      if(b.hit) continue;
+      // FIX 4: mermi y kaydırması kaldırıldı, aynı project y kullanılıyor
+      const bp = project(b.x, b.y, b.z);
+      const dx = mp.x - bp.x;
+      const dy = mp.y - bp.y;
+      if(dx*dx + dy*dy < mRad * mRad){
+        m.hit = true;
+        b.hit = true;
+        game.score += 10;
+        break;
+      }
+    }
+
+    // FIX 6: hitCounted bayrağı → tek meteordan tek hasar
+    if(!m.hit && !m.hitCounted && m.z < 100 && !game.boost){
+      m.hitCounted = true;
+      m.hit        = true;
+      game.shield -= SHIELD_DAMAGE;
+      if(game.shield < 0) game.shield = 0;
+    }
+  }
+
+  game.meteors = game.meteors.filter(m => !m.hit);
+  game.bullets  = game.bullets.filter(b  => !b.hit);
+}
+
+/* ── BOOST ── */
+// Boost: cooldown sistemi eklendi
+function tryBoost(){
+  if(!game.running) return;
+  if(game.boost || game.boostCooldown > 0) return;
+  game.boost      = true;
+  game.boostTimer = BOOST_DURATION;
+}
 
 function updateBoost(){
- if(game.boost){
-  game.boostTimer--;
-  if(game.boostTimer<=0) game.boost=false;
- }
+  if(game.boost){
+    game.boostTimer--;
+    if(game.boostTimer <= 0){
+      game.boost        = false;
+      game.boostCooldown = BOOST_COOLDOWN;
+    }
+  } else if(game.boostCooldown > 0){
+    game.boostCooldown--;
+  }
 }
 
-/* ================= LOOP ================= */
-function loop(){
- requestAnimationFrame(loop);
- if(!game.running) return;
+/* ── HUD GÜNCELLEMESİ ── */
+function updateHUD(){
+  document.getElementById("score").innerText = game.score;
 
- game.playerX+=(game.targetX-game.playerX)*0.1;
+  // Kalkan
+  const el = document.getElementById("shield");
+  el.style.height = game.shield + "%";
+  if(game.shield > 60)      el.style.background = "#0ff";
+  else if(game.shield > 30) el.style.background = "orange";
+  else                       el.style.background = "red";
 
- ctx.fillStyle="#000";
- ctx.fillRect(0,0,canvas.width,canvas.height);
-
- updateStars(); drawStars();
- updateBG(); drawBG();
- updateMeteors(); drawMeteors();
- updateBullets(); drawBullets();
- checkCollision();
- updateBoost();
-
- document.getElementById("score").innerText=game.score;
-
- let el=document.getElementById("shield");
- el.style.height=game.shield+"%";
-
- if(game.shield>60) el.style.background="#0ff";
- else if(game.shield>30) el.style.background="orange";
- else el.style.background="red";
-
- if(game.shield<=0){
-  alert("OYUN BİTTİ");
-  location.reload();
- }
+  // Boost göstergesi
+  const bf = document.getElementById("boostFill");
+  if(game.boost){
+    bf.style.height     = (game.boostTimer / BOOST_DURATION * 100) + "%";
+    bf.style.background = "#fa0";
+  } else if(game.boostCooldown > 0){
+    bf.style.height     = ((BOOST_COOLDOWN - game.boostCooldown) / BOOST_COOLDOWN * 100) + "%";
+    bf.style.background = "#444";
+  } else {
+    bf.style.height     = "100%";
+    bf.style.background = "#fa0";
+  }
 }
-loop();
 
-/* ================= INPUT (FULL FIX) ================= */
+/* ── GAME OVER ── */
+// FIX 7: alert() kaldırıldı → özel ekran
+function triggerGameOver(){
+  game.running = false;
+  document.getElementById("finalScore").innerText = game.score;
+  document.getElementById("gameOver").style.display = "flex";
+}
 
-// hareket
-canvas.addEventListener("touchmove",(e)=>{
- if(e.touches.length>0){
-  game.targetX = e.touches[0].clientX;
- }
-},{passive:true});
+/* ── ANA DÖNGÜ ── */
+let bgTimer   = 0;
+let metTimer  = 0;
+let lastTime  = 0;
 
-/* ================= INPUT FINAL FIX ================= */
+function loop(ts){
+  requestAnimationFrame(loop);
+  if(!game.running) return;
 
-// hareket
-canvas.addEventListener("touchmove",(e)=>{
- if(e.touches.length>0){
-  game.targetX = e.touches[0].clientX;
- }
-},{passive:true});
+  const dt = ts - lastTime;
+  lastTime = ts;
 
-// 🔥 ATEŞ (EN STABİL YÖNTEM)
-document.addEventListener("touchstart", function(e){
+  // Spawn zamanlayıcıları (setInterval yerine loop içinde → daha güvenli)
+  bgTimer  += dt;
+  metTimer += dt;
+  if(bgTimer  > BG_INTERVAL)     { spawnBG();     bgTimer  = 0; }
+  if(metTimer > METEOR_INTERVAL)  { spawnMeteor(); metTimer = 0; }
 
- // menü açıksa ateş etme
- if(!game.running) return;
+  // FIX 2: playerX canvas-merkez referanslıdır, targetX da öyle
+  game.playerX += (game.targetX - game.playerX) * 0.1;
 
- shoot();
+  // Çiz
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-}, {passive:true});
+  updateStars();   drawStars();
+  updateBG();      drawBG();
+  updateMeteors(); drawMeteors();
+  updateBullets(); drawBullets();
+  checkCollision();
+  updateBoost();
+  updateHUD();
 
-// 🔥 BUTON
-document.getElementById("fireBtn").addEventListener("touchstart", function(e){
- e.stopPropagation();
- shoot();
-}, {passive:true});
+  if(game.shield <= 0) triggerGameOver();
+}
 
+/* ── BAŞLAT / YENİDEN OYNA ── */
+function startGame(){
+  document.getElementById("menu").style.display     = "none";
+  document.getElementById("gameOver").style.display = "none";
+  initGame();
+  game.running = true;
+  bgTimer  = 0;
+  metTimer = 0;
+  lastTime = performance.now();
+}
+
+document.getElementById("startBtn").addEventListener("click",   startGame);
+document.getElementById("restartBtn").addEventListener("click", startGame);
+// Touch desteği
+document.getElementById("startBtn").addEventListener("touchend",   e=>{ e.preventDefault(); startGame(); });
+document.getElementById("restartBtn").addEventListener("touchend", e=>{ e.preventDefault(); startGame(); });
+
+/* ── INPUT ── */
+
+// FIX 1 & 2: Tek touchmove listener, canvas-merkez referanslı targetX
+canvas.addEventListener("touchmove", (e) => {
+  if(!game || !game.running) return;
+  if(e.touches.length > 0){
+    // FIX 2: Ekran X'ini canvas merkezi referanslına çevir
+    game.targetX = e.touches[0].clientX - canvas.width / 2;
+  }
+}, { passive: true });
+
+// FIX 3: document'e genel "her dokunuşta ateş" KALDIRILDI
+// Ateş yalnızca fireBtn'den:
+document.getElementById("fireBtn").addEventListener("touchstart", (e) => {
+  e.stopPropagation();
+  shoot();
+}, { passive: true });
+
+// Masaüstü test için mouse
+canvas.addEventListener("mousemove", (e) => {
+  if(!game || !game.running) return;
+  game.targetX = e.clientX - canvas.width / 2;
+});
+document.addEventListener("keydown", (e) => {
+  if(e.code === "Space") shoot();
+});
+
+// BOOST
+document.getElementById("boostBtn").addEventListener("touchstart", (e) => {
+  e.stopPropagation();
+  tryBoost();
+}, { passive: true });
+document.getElementById("boostBtn").addEventListener("click", tryBoost);  // masaüstü
+
+/* ── BAŞLAT ── */
+initGame();
+requestAnimationFrame(loop);
 </script>
 
 </body>
