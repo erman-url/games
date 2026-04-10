@@ -351,34 +351,58 @@ function project(x, y, z){
    🔥 YENİ ATEŞ SİSTEMİ (SADECE EKLENDİ)
 ===================================================== */
 
-// 🔥 EKLENDİ
 function shoot(){
   if(!game.running) return;
+  if(game.shootCooldown > 0) return;
 
-  // basit ve stabil spawn
+  game.shootCooldown = SHOOT_COOLDOWN;
+
+  const cx = game.playerX;
+
+  // 🔥 cockpit sol + sağ namlu
+  const offset = 18;
+
+  const baseY = canvas.height * 0.32;
+  const baseZ = 70;
+
+  // sol mermi
   game.bullets.push({
-    x: game.playerX,
-     y: canvas.height * 0.25,
-    z: 80
+    x: cx - offset,
+    y: baseY,
+    z: baseZ
+  });
+
+  // sağ mermi
+  game.bullets.push({
+    x: cx + offset,
+    y: baseY,
+    z: baseZ
   });
 }
 
-// 🔥 EKLENDİ
 function updateBullets(){
+  if(game.shootCooldown > 0) game.shootCooldown--;
+
   for(let b of game.bullets){
-    b.z -= 20;
+    b.z -= 18;
   }
+
   game.bullets = game.bullets.filter(b => b.z > 1);
 }
 
 // 🔥 EKLENDİ
 function drawBullets(){
   ctx.fillStyle = "#0ff";
+
   for(let b of game.bullets){
     const p = project(b.x, b.y, b.z);
-    // ekranda görünmeyenleri çizme (hafif optimizasyon)
-    if(p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) continue;
-ctx.fillRect(p.x - 3 * p.scale, p.y, 6 * p.scale, 18 * p.scale);
+
+    ctx.fillRect(
+      p.x - 3 * p.scale,
+      p.y,
+      6 * p.scale,
+      20 * p.scale
+    );
   }
 }
 
@@ -573,7 +597,6 @@ function loop(ts){
   // 🔥 EKLENDİ
   updateBullets();
   drawBullets();
-
   checkCollision();
   updateBoost();
   updateHUD();
