@@ -10,11 +10,9 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 #gameCanvas{position:fixed;top:0;left:0;width:100%;height:100%;}
 #cockpit{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;pointer-events:none;z-index:5;}
 #hud{position:fixed;top:10px;left:10px;color:#0ff;z-index:10;}
-#menu{position:fixed;inset:0;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:20;}
-.btn{padding:12px 24px;margin:10px;background:#0ff;color:#000;border-radius:8px;font-weight:bold;}
 
 #fireBtn{position:fixed;bottom:60px;right:25px;width:80px;height:80px;border-radius:50%;background:rgba(0,255,255,0.25);z-index:15;}
-#boostBtn{position:fixed;bottom:60px;left:25px;width:80px;height:80px;border-radius:50%;background:rgba(255,0,0,0.6);z-index:15;}
+#boostBtn{position:fixed;bottom:60px;left:25px;width:80px;height:80px;border-radius:50%;background:red;z-index:15;}
 
 #shieldBar{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);width:220px;height:10px;background:#222;border-radius:6px;overflow:hidden;z-index:20;}
 #shield{height:100%;background:#0ff;width:100%;}
@@ -32,60 +30,48 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 <div id="shieldBar"><div id="shield"></div></div>
 <div id="hud">SCORE: <span id="score">0</span></div>
 
-<div id="menu">
-  <h2 style="color:#0ff">SPACE RUNNER</h2>
-  <div class="btn" onclick="startGame()">START</div>
-</div>
-
 <script>
-/* ================= CORE ================= */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+/* ===== YENİ: SHAKE ===== */
+let shakePower = 0;
+
+/* ===== YENİ: GAME OVER ===== */
+let gameOver = false;
+
 function resize(){
-  canvas.width = innerWidth;
-  canvas.height = innerHeight;
+ canvas.width = innerWidth;
+ canvas.height = innerHeight;
 }
 resize();
 addEventListener("resize", resize);
 
-/* ================= STATE ================= */
+function project(x,y,z){
+ let scale = 300 / z;
+ return {
+   x: x*scale + canvas.width/2,
+   y: y*scale + canvas.height/2,
+   scale
+ };
+}
+
 let game = {
-  running:false,
-  score:0,
-  speed:7,
-  playerX:canvas.width/2,
-  targetX:canvas.width/2,
-  bullets:[],
-  meteors:[],
-  stars:[],
-  debris:[],
-  shield:100,
-  boost:false,
-  boostTimer:0
+ running:true,
+ score:0,
+ playerX:0,
+ targetX:0,
+ bullets:[],
+ meteors:[],
+ debris:[],
+ stars:[],
+ bgObject:null,
+ shield:100,
+ boost:false,
+ boostTimer:0
 };
 
-/* ================= AUDIO ================= */
-const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-let unlocked=false;
-function unlockAudio(){
- if(unlocked) return;
- const buffer = audioCtx.createBuffer(1,1,22050);
- const source = audioCtx.createBufferSource();
- source.buffer = buffer;
- source.connect(audioCtx.destination);
- source.start(0);
- unlocked=true;
-}
-
-/* ================= MENU ================= */
-function startGame(){
- unlockAudio();
- document.getElementById("menu").style.display="none";
- game.running=true;
-}
-
-/* ================= STARS ================= */
+/* STARS */
 for(let i=0;i<140;i++){
  game.stars.push({
   x:(Math.random()-0.5)*canvas.width,
@@ -95,33 +81,78 @@ for(let i=0;i<140;i++){
 }
 
 function updateStars(){
- let sp = game.boost ? 30 : game.speed;
+ let speed = game.boost ? 35 : 8;
  for(let s of game.stars){
-  s.z -= sp;
-  if(s.z<=1){
-   s.x=(Math.random()-0.5)*canvas.width;
-   s.y=(Math.random()-0.5)*canvas.height;
-   s.z=canvas.width;
-  }
+  s.z -= speed;
+  if(s.z<1) s.z=canvas.width;
  }
 }
 
 function drawStars(){
+ ctx.fillStyle="#fff";
  for(let s of game.stars){
-  let sc=200/s.z;
-  ctx.fillStyle="#fff";
-  ctx.fillRect(s.x*sc+canvas.width/2,s.y*sc+canvas.height/2,2,2);
+  let p = project(s.x,s.y,s.z);
+  ctx.fillRect(p.x,p.y,2,2);
  }
 }
 
-/* ================= METEOR ================= */
+/* BG */
+const imgs={
+ sun:new Image(),
+ nebula:new Image(),
+ meteor:new Image(),
+ meteor1:new Image()
+};
+
+imgs.sun.src="image/sun.png";
+imgs.nebula.src="image/nebula.png";
+imgs.meteor.src="image/meteor.png";
+imgs.meteor1.src="image/meteor1.png";
+
+function spawnBG(){
+ if(game.bgObject) return;
+
+ let keys=Object.keys(imgs);
+ let key=keys[Math.floor(Math.random()*keys.length)];
+
+ game.bgObject={
+  img:imgs[key],
+  x:(Math.random()-0.5)*canvas.width,
+  y:(Math.random()-0.5)*canvas.height,
+  z:canvas.width
+ };
+}
+setInterval(spawnBG,4000);
+
+function updateBG(){
+ if(!game.bgObject) return;
+
+ game.bgObject.z -= 2;
+
+ if(game.bgObject.z < 1){
+  game.bgObject = null;
+ }
+}
+
+function drawBG(){
+ if(!game.bgObject) return;
+
+ let p = project(game.bgObject.x,game.bgObject.y,game.bgObject.z);
+
+ ctx.globalAlpha = 0.6;
+ ctx.drawImage(game.bgObject.img, p.x, p.y, 200*p.scale, 200*p.scale);
+ ctx.globalAlpha = 1;
+}
+
+/* METEOR */
 function spawnMeteor(){
  const speeds=[4,6,8,10];
+
  game.meteors.push({
-  x:(Math.random()-0.15)*canvas.width, // 🔥 merkeze yakın
+  x:(Math.random()-0.15)*canvas.width,
   y:(Math.random()-0.15)*canvas.height,
   z:canvas.width,
-  size:25+Math.random()*35,
+  size:30,
   speed:speeds[Math.floor(Math.random()*speeds.length)]
  });
 }
@@ -135,107 +166,102 @@ function updateMeteors(){
 }
 
 function drawMeteors(){
+ ctx.fillStyle="#777";
  for(let m of game.meteors){
-  let sc=300/m.z;
-  let x=m.x*sc+canvas.width/2;
-  let y=m.y*sc+canvas.height/2;
+  let p = project(m.x,m.y,m.z);
 
-  ctx.fillStyle="#666";
   ctx.beginPath();
   for(let i=0;i<7;i++){
     let ang=i*Math.PI*2/7;
-    let r=m.size*sc*(0.7+Math.random()*0.4);
-    ctx.lineTo(x+Math.cos(ang)*r,y+Math.sin(ang)*r);
+    let r=m.size*p.scale*(0.7+Math.random()*0.4);
+    ctx.lineTo(p.x+Math.cos(ang)*r,p.y+Math.sin(ang)*r);
   }
   ctx.fill();
  }
 }
 
-/* ================= SHOOT (FIXED CORE) ================= */
+/* SHOOT */
 function shoot(){
- let cx = game.playerX - canvas.width/2;
+ let cx = game.playerX;
 
- // 🔥 ortada birleşen çift atış
- game.bullets.push({x:cx-10,z:0});
- game.bullets.push({x:cx+10,z:0});
+ game.bullets.push({x:cx-20, y:200, z:50});
+ game.bullets.push({x:cx+20, y:200, z:50});
 }
 
-/* ================= BULLETS ================= */
+/* BULLETS */
 function updateBullets(){
  for(let b of game.bullets){
-  b.z += 28;
+  b.z -= 15;
  }
- game.bullets = game.bullets.filter(b=>b.z<canvas.width);
+ game.bullets = game.bullets.filter(b=>b.z>1);
 }
 
 function drawBullets(){
+ ctx.fillStyle="#0ff";
  for(let b of game.bullets){
-
-  let sc = 300/(canvas.width-b.z);
-  let x = b.x*sc + canvas.width/2;
-
-  // 🔥 EN KRİTİK: DÜZ İLERİ AKIŞ
-  let y = canvas.height - 140 - b.z*0.9;
-
-  ctx.fillStyle="#0ff";
-  ctx.fillRect(x,y,4,14);
+  let p = project(b.x,b.y,b.z);
+  ctx.fillRect(p.x,p.y,4*p.scale,12*p.scale);
  }
 }
 
-/* ================= COLLISION ================= */
+/* COLLISION */
 function checkCollision(){
  for(let m of game.meteors){
 
-  let ms=300/m.z;
-  let mx=m.x*ms+canvas.width/2;
-  let my=m.y*ms+canvas.height/2;
-  let size=m.size*ms;
+  let mp = project(m.x,m.y,m.z);
+  let mSize = m.size * mp.scale;
 
   for(let b of game.bullets){
 
-   let bs=300/(canvas.width-b.z);
-   let bx=b.x*bs+canvas.width/2;
-   let by=canvas.height-140-b.z*0.9;
+   let bp = project(b.x,b.y,b.z);
 
-   let dx=mx-bx;
-   let dy=my-by;
+   let dx = mp.x - bp.x;
+   let dy = mp.y - bp.y;
 
-   if(dx*dx+dy*dy < size*size){
+   if(dx*dx + dy*dy < mSize*mSize){
 
     m.hit=true;
     b.hit=true;
     game.score+=10;
 
-    // 💥 PRO debris
-    for(let i=0;i<14;i++){
+    for(let i=0;i<12;i++){
      game.debris.push({
-      x:mx,y:my,
-      vx:(Math.random()-0.5)*10,
-      vy:(Math.random()-0.5)*10,
+      x:mp.x,
+      y:mp.y,
+      vx:(Math.random()-0.5)*8,
+      vy:(Math.random()-0.5)*8,
       life:30
      });
     }
    }
   }
 
-  // çarpışma
-  if(m.z<120 && !game.boost){
-   game.shield-=5;
+  /* ===== KALKAN SİSTEMİ ===== */
+  if(m.z < 120 && !m.hit && !game.boost){
+
+   m.hit = true;
+
+   game.shield -=5;
+   if(game.shield < 0) game.shield = 0;
+
+   if(navigator.vibrate) navigator.vibrate(50);
+
+   shakePower = 10;
   }
  }
 
- game.meteors=game.meteors.filter(m=>!m.hit);
- game.bullets=game.bullets.filter(b=>!b.hit);
+ game.meteors = game.meteors.filter(m=>!m.hit);
+ game.bullets = game.bullets.filter(b=>!b.hit);
 }
 
-/* ================= DEBRIS ================= */
+/* DEBRIS */
 function updateDebris(){
  for(let d of game.debris){
   d.x+=d.vx;
   d.y+=d.vy;
   d.life--;
  }
- game.debris=game.debris.filter(d=>d.life>0);
+ game.debris = game.debris.filter(d=>d.life>0);
 }
 
 function drawDebris(){
@@ -245,7 +271,7 @@ function drawDebris(){
  }
 }
 
-/* ================= BOOST ================= */
+/* BOOST */
 document.getElementById("boostBtn").addEventListener("touchstart",()=>{
  if(game.boost) return;
  game.boost=true;
@@ -255,23 +281,33 @@ document.getElementById("boostBtn").addEventListener("touchstart",()=>{
 function updateBoost(){
  if(game.boost){
   game.boostTimer--;
-  if(game.boostTimer<=0) game.boost=false;
+  if(game.boostTimer<=0){
+    game.boost=false;
+  }
  }
 }
 
-/* ================= LOOP ================= */
+/* LOOP */
 function loop(){
- if(!game.running){
-  requestAnimationFrame(loop);
-  return;
- }
+
+ if(gameOver) return;
 
  game.playerX += (game.targetX-game.playerX)*0.1;
+
+ ctx.setTransform(1,0,0,1,0,0);
+
+ if(shakePower>0){
+  let dx=(Math.random()-0.5)*shakePower;
+  let dy=(Math.random()-0.5)*shakePower;
+  ctx.setTransform(1,0,0,1,dx,dy);
+  shakePower*=0.9;
+ }
 
  ctx.fillStyle="#000";
  ctx.fillRect(0,0,canvas.width,canvas.height);
 
  updateStars(); drawStars();
+ updateBG(); drawBG();
  updateMeteors(); drawMeteors();
  updateBullets(); drawBullets();
  checkCollision();
@@ -279,16 +315,33 @@ function loop(){
  updateBoost();
 
  document.getElementById("score").innerText=game.score;
- document.getElementById("shield").style.width=game.shield+"%";
+
+ /* ===== KALKAN BAR ===== */
+ let el = document.getElementById("shield");
+ el.style.width = game.shield + "%";
+
+ if(game.shield > 60) el.style.background="#0ff";
+ else if(game.shield > 30) el.style.background="orange";
+ else el.style.background="red";
+
+ /* ===== GAME OVER ===== */
+ if(game.shield <=0){
+  gameOver = true;
+  setTimeout(()=>{
+    alert("OYUN BİTTİ");
+    location.reload();
+  },200);
+ }
 
  requestAnimationFrame(loop);
 }
 loop();
 
-/* ================= INPUT ================= */
+/* INPUT */
 canvas.addEventListener("touchmove",(e)=>{
- game.targetX = e.touches[0].clientX;
+ game.targetX = e.touches[0].clientX - canvas.width/2;
 });
+
 document.getElementById("fireBtn").addEventListener("touchstart",shoot);
 
 </script>
