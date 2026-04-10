@@ -438,18 +438,10 @@ function drawMeteors(){
 function shoot(){
   if(!game.running) return;
   if(game.shootCooldown > 0) return;
-
   game.shootCooldown = SHOOT_COOLDOWN;
-
   const cx = game.playerX;
-
-  // 🔴 KRİTİK: ekran boyutuna göre dinamik başlangıç
   const bulletY = canvas.height * 0.28;
-
-  // 🔴 Perspektif için daha yakın z (daha görünür)
   const bulletZ = 60;
-
-  // çift namlu
   game.bullets.push({ x: cx - 10, y: bulletY, z: bulletZ });
   game.bullets.push({ x: cx + 10, y: bulletY, z: bulletZ });
 }
