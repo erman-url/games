@@ -428,31 +428,66 @@ function drawMeteors(){
   }
 }
 
-/* ── MERMİLER ── */
-// FIX 3: Ateş yalnızca fireBtn'den
+/* ── MERMİLER (FULL FIX) ── */
 function shoot(){
   if(!game.running) return;
-  if(game.shootCooldown > 0) return;  // çok hızlı ateş engeli
+  if(game.shootCooldown > 0) return;
+
   game.shootCooldown = SHOOT_COOLDOWN;
 
-  // FIX 2: playerX zaten canvas-merkez referanslı
   const cx = game.playerX;
-  game.bullets.push({ x: cx - 12, y: 140, z: 80 });
-  game.bullets.push({ x: cx + 12, y: 140, z: 80 });
+
+  // 🔴 KRİTİK: ekran boyutuna göre dinamik başlangıç
+  const bulletY = canvas.height * 0.28;
+
+  // 🔴 Perspektif için daha yakın z (daha görünür)
+  const bulletZ = 60;
+
+  // çift namlu
+  game.bullets.push({ x: cx - 10, y: bulletY, z: bulletZ });
+  game.bullets.push({ x: cx + 10, y: bulletY, z: bulletZ });
 }
+
 
 function updateBullets(){
   if(game.shootCooldown > 0) game.shootCooldown--;
-  for(let b of game.bullets) b.z -= 18;
+
+  // 🔴 hız boost durumuna göre değişir
+  const speed = game.boost ? 28 : 18;
+
+  for(let b of game.bullets){
+    b.z -= speed;
+  }
+
+  // 🔴 temizleme (performans)
   game.bullets = game.bullets.filter(b => b.z > 1 && !b.hit);
 }
 
+
 function drawBullets(){
   ctx.fillStyle = "#0ff";
+
   for(let b of game.bullets){
     const p = project(b.x, b.y, b.z);
-    // FIX 4: Artık y kaydırması YOK; project'ten gelen y kullanılıyor
-    ctx.fillRect(p.x - 2 * p.scale, p.y, 4 * p.scale, 14 * p.scale);
+
+    // 🔴 ekran dışında çizme (performans + bug önleme)
+    if(p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) continue;
+
+    // 🔴 scale clamp (çok küçülme bug fix)
+    const s = Math.max(0.6, p.scale);
+
+    // 🔴 glow efekti (pro hissiyat)
+    ctx.shadowColor = "#0ff";
+    ctx.shadowBlur = 10;
+
+    ctx.fillRect(
+      p.x - 2 * s,
+      p.y,
+      4 * s,
+      16 * s
+    );
+
+    ctx.shadowBlur = 0;
   }
 }
 
