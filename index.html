@@ -593,12 +593,27 @@ canvas.addEventListener("touchmove", (e) => {
   }
 }, { passive: true });
 
-// FIX 3: document'e genel "her dokunuşta ateş" KALDIRILDI
-// Ateş yalnızca fireBtn'den:
-document.getElementById("fireBtn").addEventListener("touchstart", (e) => {
+// FIX 3 (GÜNCEL): Ateş yalnızca fireBtn'den — tüm platformlarda stabil
+
+const fireBtn = document.getElementById("fireBtn");
+
+// MOBİL (ana tetikleyici)
+fireBtn.addEventListener("touchstart", (e) => {
+  e.preventDefault();
   e.stopPropagation();
   shoot();
-}, { passive: true });
+}, { passive: false });
+
+// MOBİL fallback (bazı cihazlar sadece touchend tetikler)
+fireBtn.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  shoot();
+}, { passive: false });
+
+// DESKTOP (mouse)
+fireBtn.addEventListener("click", (e) => {
+  shoot();
+});
 
 // Masaüstü test için mouse
 canvas.addEventListener("mousemove", (e) => {
