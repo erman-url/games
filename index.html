@@ -203,6 +203,11 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 #fireBtn{
   pointer-events:auto;
 }
+
+#fireBtn{
+  touch-action: manipulation;
+}
+
 </style>
 </head>
 
@@ -662,22 +667,23 @@ canvas.addEventListener("touchmove", (e) => {
 
 // FIX 3 (GÜNCEL): Ateş yalnızca fireBtn'den — tüm platformlarda stabil
 
+// 🔥 iOS + Android + Desktop FULL uyumlu
+
 const fireBtn = document.getElementById("fireBtn");
 
-// MOBİL (ana tetikleyici)
+// iOS için EN STABİL
+fireBtn.addEventListener("pointerdown", (e) => {
+  e.preventDefault();
+  shoot();
+});
+
+// fallback
 fireBtn.addEventListener("touchstart", (e) => {
   e.preventDefault();
-  e.stopPropagation();
   shoot();
-}, { passive: false });
+}, { passive:false });
 
-// MOBİL fallback (bazı cihazlar sadece touchend tetikler)
-fireBtn.addEventListener("touchend", (e) => {
-  e.preventDefault();
-  shoot();
-}, { passive: false });
-
-// DESKTOP (mouse)
+// desktop
 fireBtn.addEventListener("click", (e) => {
   shoot();
 });
@@ -702,7 +708,7 @@ initGame();
 requestAnimationFrame(loop);
 
 function shoot(){
-  console.log("ATEŞ", game.running);
+  console.log("ATEŞ GERÇEK", game.running);
 }
 
 </script>
