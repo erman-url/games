@@ -669,36 +669,25 @@ canvas.addEventListener("touchmove", (e) => {
 // FIX 3 (GÜNCEL): Ateş yalnızca fireBtn'den — tüm platformlarda stabil
 
 // 🔥 iOS + Android + Desktop FULL uyumlu
-
 const fireBtn = document.getElementById("fireBtn");
 
-// iOS için EN STABİL
+// 🔥 TEK EVENT – TÜM CİHAZLAR (iOS dahil)
 fireBtn.addEventListener("pointerdown", (e) => {
   e.preventDefault();
   e.stopPropagation();
   shoot();
 });
 
-// fallback
-fireBtn.addEventListener("touchstart", (e) => {
-  e.preventDefault();
-  shoot();
-}, { passive:false });
-
-// desktop
-fireBtn.addEventListener("click", (e) => {
-  shoot();
-});
-
-// Masaüstü test için mouse
+// Masaüstü hareket (kalsın)
 canvas.addEventListener("mousemove", (e) => {
   if(!game || !game.running) return;
   game.targetX = e.clientX - canvas.width / 2;
 });
+
+// Klavye ateş (kalsın)
 document.addEventListener("keydown", (e) => {
   if(e.code === "Space") shoot();
 });
-
 // BOOST
 document.getElementById("boostBtn").addEventListener("touchstart", (e) => {
   e.stopPropagation();
