@@ -42,7 +42,6 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 <div id="menu">
   <div class="btn" onclick="startGame()">START</div>
 </div>
-
 <script>
 
 /* ================= CORE ================= */
@@ -68,7 +67,8 @@ let game={
  debris:[],
  shield:100,
  boost:false,
- boostTimer:0
+ boostTimer:0,
+ bgObject:null // ✅ EKLENDİ
 };
 
 /* ================= START ================= */
@@ -102,6 +102,50 @@ function drawStars(){
   let p=project(s.x,s.y,s.z);
   ctx.fillRect(p.x,p.y,2,2);
  }
+}
+
+/* ================= BG OBJECT ================= */
+const bgImgs = {
+  sun:new Image(),
+  nebula:new Image(),
+  meteor:new Image(),
+  meteor1:new Image()
+};
+
+bgImgs.sun.src="image/sun.png";
+bgImgs.nebula.src="image/nebula.png";
+bgImgs.meteor.src="image/meteor.png";
+bgImgs.meteor1.src="image/meteor1.png";
+
+function spawnBG(){
+ if(game.bgObject) return;
+
+ let keys=Object.keys(bgImgs);
+ let key=keys[Math.floor(Math.random()*keys.length)];
+
+ game.bgObject={
+  img:bgImgs[key],
+  x:(Math.random()-0.5)*canvas.width*0.5,
+  y:(Math.random()-0.5)*canvas.height*0.5,
+  z:canvas.width
+ };
+}
+setInterval(spawnBG,4000);
+
+function updateBG(){
+ if(!game.bgObject) return;
+ game.bgObject.z-=2;
+ if(game.bgObject.z<1) game.bgObject=null;
+}
+
+function drawBG(){
+ if(!game.bgObject) return;
+
+ let p=project(game.bgObject.x,game.bgObject.y,game.bgObject.z);
+
+ ctx.globalAlpha=0.6;
+ ctx.drawImage(game.bgObject.img,p.x,p.y,220*p.scale,220*p.scale);
+ ctx.globalAlpha=1;
 }
 
 /* ================= METEOR ================= */
@@ -138,25 +182,31 @@ function drawMeteors(){
  }
 }
 
-/* ================= SHOOT ================= */
+/* ================= SHOOT (FIXED) ================= */
 function shoot(){
  let cx=game.playerX-canvas.width/2;
 
- game.bullets.push({x:cx-14,y:160,z:60});
- game.bullets.push({x:cx+14,y:160,z:60});
+ // 🔥 çift namlu, ortada birleşir
+ game.bullets.push({x:cx-12,y:140,z:80});
+ game.bullets.push({x:cx+12,y:140,z:80});
 }
 
 /* ================= BULLETS ================= */
 function updateBullets(){
- for(let b of game.bullets) b.z-=15;
+ for(let b of game.bullets) b.z-=18; // 🔥 hız artırıldı (daha iyi hissiyat)
  game.bullets=game.bullets.filter(b=>b.z>1);
 }
 
 function drawBullets(){
  ctx.fillStyle="#0ff";
  for(let b of game.bullets){
+
   let p=project(b.x,b.y,b.z);
-  ctx.fillRect(p.x,p.y,4*p.scale,14*p.scale);
+
+  // 🔥 ileri hissi düzeltildi (kritik)
+  let y = p.y - (b.z * 0.12);
+
+  ctx.fillRect(p.x,y,4*p.scale,14*p.scale);
  }
 }
 
@@ -216,6 +266,7 @@ function loop(){
  ctx.fillRect(0,0,canvas.width,canvas.height);
 
  updateStars(); drawStars();
+ updateBG(); drawBG(); // ✅ EKLENDİ
  updateMeteors(); drawMeteors();
  updateBullets(); drawBullets();
  checkCollision();
@@ -241,7 +292,10 @@ loop();
 canvas.addEventListener("touchmove",(e)=>{
  game.targetX=e.touches[0].clientX;
 });
+
+// 🔥 FIX: HER YERDEN ATEŞ
 canvas.addEventListener("touchstart",shoot);
+document.getElementById("fireBtn").addEventListener("touchstart",shoot);
 
 </script>
 </body>
