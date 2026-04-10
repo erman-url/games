@@ -547,35 +547,42 @@ function updateBoost(){
   }
 }
 
-function shoot(){
-  console.log("ATEŞ OK");
-}
-
-/* ── HUD GÜNCELLEMESİ ── */
+/* ── HUD GÜNCELLEMESİ (FULL FIX) ── */
 function updateHUD(){
-  document.getElementById("score").innerText = game.score;
+  const scoreEl  = document.getElementById("score");
+  const shieldEl = document.getElementById("shield");
+  const boostEl  = document.getElementById("boostFill");
 
-  // Kalkan
-  const el = document.getElementById("shield");
-  el.style.height = game.shield + "%";
-  if(game.shield > 60)      el.style.background = "#0ff";
-  else if(game.shield > 30) el.style.background = "orange";
-  else                       el.style.background = "red";
+  // 🔴 NULL GUARD (CRASH ENGELLE)
+  if(scoreEl){
+    scoreEl.innerText = game.score;
+  }
 
-  // Boost göstergesi
-  const bf = document.getElementById("boostFill");
-  if(game.boost){
-    bf.style.height     = (game.boostTimer / BOOST_DURATION * 100) + "%";
-    bf.style.background = "#fa0";
-  } else if(game.boostCooldown > 0){
-    bf.style.height     = ((BOOST_COOLDOWN - game.boostCooldown) / BOOST_COOLDOWN * 100) + "%";
-    bf.style.background = "#444";
-  } else {
-    bf.style.height     = "100%";
-    bf.style.background = "#fa0";
+  // ── KALKAN ──
+  if(shieldEl){
+    shieldEl.style.height = game.shield + "%";
+
+    if(game.shield > 60)      shieldEl.style.background = "#0ff";
+    else if(game.shield > 30) shieldEl.style.background = "orange";
+    else                      shieldEl.style.background = "red";
+  }
+
+  // ── BOOST ──
+  if(boostEl){
+    if(game.boost){
+      boostEl.style.height     = (game.boostTimer / BOOST_DURATION * 100) + "%";
+      boostEl.style.background = "#fa0";
+
+    } else if(game.boostCooldown > 0){
+      boostEl.style.height     = ((BOOST_COOLDOWN - game.boostCooldown) / BOOST_COOLDOWN * 100) + "%";
+      boostEl.style.background = "#444";
+
+    } else {
+      boostEl.style.height     = "100%";
+      boostEl.style.background = "#fa0";
+    }
   }
 }
-
 
 
 /* ── GAME OVER ── */
@@ -585,8 +592,6 @@ function triggerGameOver(){
   document.getElementById("finalScore").innerText = game.score;
   document.getElementById("gameOver").style.display = "flex";
 }
-
-
 
 
 /* ── ANA DÖNGÜ ── */
@@ -629,7 +634,10 @@ function loop(ts){
 function startGame(){
   document.getElementById("menu").style.display     = "none";
   document.getElementById("gameOver").style.display = "none";
+  document.addEventListener("DOMContentLoaded", () => {
   initGame();
+  requestAnimationFrame(loop);
+});
   game.running = true;
   bgTimer  = 0;
   metTimer = 0;
