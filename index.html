@@ -15,9 +15,6 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
   left:0;
   width:100%;
   height:100%;
-
-  /* 🔴 KRİTİK */
-  pointer-events:none;
 }
 
 #cockpit{
@@ -198,14 +195,18 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
   transition:background .3s;
 }
 
-
-
 #fireBtn{
   pointer-events:auto;
 }
 
 #fireBtn{
   touch-action: manipulation;
+}
+
+#fireBtn, #boostBtn{
+  z-index:9999;
+  pointer-events:auto;
+  touch-action:manipulation;
 }
 
 </style>
