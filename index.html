@@ -10,12 +10,23 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 #gameCanvas{position:fixed;top:0;left:0;width:100%;height:100%;}
 #cockpit{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:500px;pointer-events:none;z-index:5;}
 #hud{position:fixed;top:10px;left:10px;color:#0ff;z-index:10;}
+#menu{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;justify-content:center;align-items:center;z-index:20;}
+.btn{padding:12px 24px;background:#0ff;color:#000;border-radius:8px;}
 
-#fireBtn{position:fixed;bottom:60px;right:25px;width:80px;height:80px;border-radius:50%;background:rgba(0,255,255,0.25);z-index:15;}
-#boostBtn{position:fixed;bottom:60px;left:25px;width:80px;height:80px;border-radius:50%;background:red;z-index:15;}
+#fireBtn{position:fixed;bottom:60px;right:25px;width:80px;height:80px;border-radius:50%;background:rgba(0,255,255,0.25);}
+#boostBtn{position:fixed;bottom:60px;left:25px;width:80px;height:80px;border-radius:50%;background:red;}
 
-#shieldBar{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);width:220px;height:10px;background:#222;border-radius:6px;overflow:hidden;z-index:20;}
-#shield{height:100%;background:#0ff;width:100%;}
+#shieldBar{
+ position:fixed;
+ right:10px;
+ top:50%;
+ transform:translateY(-50%);
+ width:14px;
+ height:200px;
+ background:#222;
+ border-radius:8px;
+}
+#shield{width:100%;height:100%;background:#0ff;}
 </style>
 </head>
 
@@ -23,67 +34,64 @@ html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-
 
 <canvas id="gameCanvas"></canvas>
 <img src="image/cockpit.png" id="cockpit">
-
 <div id="fireBtn"></div>
 <div id="boostBtn"></div>
-
 <div id="shieldBar"><div id="shield"></div></div>
 <div id="hud">SCORE: <span id="score">0</span></div>
 
+<div id="menu">
+  <div class="btn" onclick="startGame()">START</div>
+</div>
+
 <script>
+
+/* ================= CORE ================= */
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-/* ===== YENİ: SHAKE ===== */
-let shakePower = 0;
-
-/* ===== YENİ: GAME OVER ===== */
-let gameOver = false;
-
 function resize(){
- canvas.width = innerWidth;
- canvas.height = innerHeight;
+ canvas.width=innerWidth;
+ canvas.height=innerHeight;
 }
 resize();
-addEventListener("resize", resize);
+addEventListener("resize",resize);
 
-function project(x,y,z){
- let scale = 300 / z;
- return {
-   x: x*scale + canvas.width/2,
-   y: y*scale + canvas.height/2,
-   scale
- };
-}
-
-let game = {
- running:true,
+/* ================= STATE ================= */
+let game={
+ running:false,
  score:0,
  playerX:0,
  targetX:0,
  bullets:[],
  meteors:[],
- debris:[],
  stars:[],
- bgObject:null,
+ debris:[],
  shield:100,
  boost:false,
  boostTimer:0
 };
 
-/* STARS */
-for(let i=0;i<140;i++){
- game.stars.push({
-  x:(Math.random()-0.5)*canvas.width,
-  y:(Math.random()-0.5)*canvas.height,
-  z:Math.random()*canvas.width
- });
+/* ================= START ================= */
+function startGame(){
+ document.getElementById("menu").style.display="none";
+ game.running=true;
+}
+
+/* ================= PROJECTION ================= */
+function project(x,y,z){
+ let s=300/z;
+ return {x:x*s+canvas.width/2,y:y*s+canvas.height/2,scale:s};
+}
+
+/* ================= STARS ================= */
+for(let i=0;i<120;i++){
+ game.stars.push({x:(Math.random()-0.5)*canvas.width,y:(Math.random()-0.5)*canvas.height,z:Math.random()*canvas.width});
 }
 
 function updateStars(){
- let speed = game.boost ? 35 : 8;
+ let sp=game.boost?30:8;
  for(let s of game.stars){
-  s.z -= speed;
+  s.z-=sp;
   if(s.z<1) s.z=canvas.width;
  }
 }
@@ -91,187 +99,99 @@ function updateStars(){
 function drawStars(){
  ctx.fillStyle="#fff";
  for(let s of game.stars){
-  let p = project(s.x,s.y,s.z);
+  let p=project(s.x,s.y,s.z);
   ctx.fillRect(p.x,p.y,2,2);
  }
 }
 
-/* BG */
-const imgs={
- sun:new Image(),
- nebula:new Image(),
- meteor:new Image(),
- meteor1:new Image()
-};
-
-imgs.sun.src="image/sun.png";
-imgs.nebula.src="image/nebula.png";
-imgs.meteor.src="image/meteor.png";
-imgs.meteor1.src="image/meteor1.png";
-
-function spawnBG(){
- if(game.bgObject) return;
-
- let keys=Object.keys(imgs);
- let key=keys[Math.floor(Math.random()*keys.length)];
-
- game.bgObject={
-  img:imgs[key],
-  x:(Math.random()-0.5)*canvas.width,
-  y:(Math.random()-0.5)*canvas.height,
-  z:canvas.width
- };
-}
-setInterval(spawnBG,4000);
-
-function updateBG(){
- if(!game.bgObject) return;
-
- game.bgObject.z -= 2;
-
- if(game.bgObject.z < 1){
-  game.bgObject = null;
- }
-}
-
-function drawBG(){
- if(!game.bgObject) return;
-
- let p = project(game.bgObject.x,game.bgObject.y,game.bgObject.z);
-
- ctx.globalAlpha = 0.6;
- ctx.drawImage(game.bgObject.img, p.x, p.y, 200*p.scale, 200*p.scale);
- ctx.globalAlpha = 1;
-}
-
-/* METEOR */
+/* ================= METEOR ================= */
 function spawnMeteor(){
  const speeds=[4,6,8,10];
+ const corridor=canvas.width*0.22;
 
  game.meteors.push({
-  x:(Math.random()-0.15)*canvas.width,
-  y:(Math.random()-0.15)*canvas.height,
+  x:(Math.random()-0.5)*corridor,
+  y:(Math.random()-0.2)*canvas.height,
   z:canvas.width,
   size:30,
-  speed:speeds[Math.floor(Math.random()*speeds.length)]
+  speed:speeds[Math.floor(Math.random()*4)]
  });
 }
 setInterval(spawnMeteor,700);
 
 function updateMeteors(){
- for(let m of game.meteors){
-  m.z -= m.speed;
- }
- game.meteors = game.meteors.filter(m=>m.z>1);
+ for(let m of game.meteors) m.z-=m.speed;
+ game.meteors=game.meteors.filter(m=>m.z>1);
 }
 
 function drawMeteors(){
  ctx.fillStyle="#777";
  for(let m of game.meteors){
-  let p = project(m.x,m.y,m.z);
-
+  let p=project(m.x,m.y,m.z);
   ctx.beginPath();
   for(let i=0;i<7;i++){
-    let ang=i*Math.PI*2/7;
-    let r=m.size*p.scale*(0.7+Math.random()*0.4);
-    ctx.lineTo(p.x+Math.cos(ang)*r,p.y+Math.sin(ang)*r);
+   let a=i*Math.PI*2/7;
+   let r=m.size*p.scale*(0.7+Math.random()*0.4);
+   ctx.lineTo(p.x+Math.cos(a)*r,p.y+Math.sin(a)*r);
   }
   ctx.fill();
  }
 }
 
-/* SHOOT */
+/* ================= SHOOT ================= */
 function shoot(){
- let cx = game.playerX;
+ let cx=game.playerX-canvas.width/2;
 
- game.bullets.push({x:cx-20, y:200, z:50});
- game.bullets.push({x:cx+20, y:200, z:50});
+ game.bullets.push({x:cx-14,y:160,z:60});
+ game.bullets.push({x:cx+14,y:160,z:60});
 }
 
-/* BULLETS */
+/* ================= BULLETS ================= */
 function updateBullets(){
- for(let b of game.bullets){
-  b.z -= 15;
- }
- game.bullets = game.bullets.filter(b=>b.z>1);
+ for(let b of game.bullets) b.z-=15;
+ game.bullets=game.bullets.filter(b=>b.z>1);
 }
 
 function drawBullets(){
  ctx.fillStyle="#0ff";
  for(let b of game.bullets){
-  let p = project(b.x,b.y,b.z);
-  ctx.fillRect(p.x,p.y,4*p.scale,12*p.scale);
+  let p=project(b.x,b.y,b.z);
+  ctx.fillRect(p.x,p.y,4*p.scale,14*p.scale);
  }
 }
 
-/* COLLISION */
+/* ================= COLLISION ================= */
 function checkCollision(){
  for(let m of game.meteors){
 
-  let mp = project(m.x,m.y,m.z);
-  let mSize = m.size * mp.scale;
+  let mp=project(m.x,m.y,m.z);
+  let size=m.size*mp.scale;
 
   for(let b of game.bullets){
+   let bp=project(b.x,b.y,b.z);
 
-   let bp = project(b.x,b.y,b.z);
+   let dx=mp.x-bp.x;
+   let dy=mp.y-bp.y;
 
-   let dx = mp.x - bp.x;
-   let dy = mp.y - bp.y;
-
-   if(dx*dx + dy*dy < mSize*mSize){
-
+   if(dx*dx+dy*dy<size*size){
     m.hit=true;
     b.hit=true;
     game.score+=10;
-
-    for(let i=0;i<12;i++){
-     game.debris.push({
-      x:mp.x,
-      y:mp.y,
-      vx:(Math.random()-0.5)*8,
-      vy:(Math.random()-0.5)*8,
-      life:30
-     });
-    }
    }
   }
 
-  /* ===== KALKAN SİSTEMİ ===== */
-  if(m.z < 120 && !m.hit && !game.boost){
-
-   m.hit = true;
-
-   game.shield -=5;
-   if(game.shield < 0) game.shield = 0;
-
-   if(navigator.vibrate) navigator.vibrate(50);
-
-   shakePower = 10;
+  if(m.z<120 && !m.hit && !game.boost){
+   m.hit=true;
+   game.shield-=1;
+   if(game.shield<0) game.shield=0;
   }
  }
 
- game.meteors = game.meteors.filter(m=>!m.hit);
- game.bullets = game.bullets.filter(b=>!b.hit);
+ game.meteors=game.meteors.filter(m=>!m.hit);
+ game.bullets=game.bullets.filter(b=>!b.hit);
 }
 
-/* DEBRIS */
-function updateDebris(){
- for(let d of game.debris){
-  d.x+=d.vx;
-  d.y+=d.vy;
-  d.life--;
- }
- game.debris = game.debris.filter(d=>d.life>0);
-}
-
-function drawDebris(){
- ctx.fillStyle="#aaa";
- for(let d of game.debris){
-  ctx.fillRect(d.x,d.y,3,3);
- }
-}
-
-/* BOOST */
+/* ================= BOOST ================= */
 document.getElementById("boostBtn").addEventListener("touchstart",()=>{
  if(game.boost) return;
  game.boost=true;
@@ -281,68 +201,47 @@ document.getElementById("boostBtn").addEventListener("touchstart",()=>{
 function updateBoost(){
  if(game.boost){
   game.boostTimer--;
-  if(game.boostTimer<=0){
-    game.boost=false;
-  }
+  if(game.boostTimer<=0) game.boost=false;
  }
 }
 
-/* LOOP */
+/* ================= LOOP ================= */
 function loop(){
+ requestAnimationFrame(loop);
+ if(!game.running) return;
 
- if(gameOver) return;
-
- game.playerX += (game.targetX-game.playerX)*0.1;
-
- ctx.setTransform(1,0,0,1,0,0);
-
- if(shakePower>0){
-  let dx=(Math.random()-0.5)*shakePower;
-  let dy=(Math.random()-0.5)*shakePower;
-  ctx.setTransform(1,0,0,1,dx,dy);
-  shakePower*=0.9;
- }
+ game.playerX+=(game.targetX-game.playerX)*0.1;
 
  ctx.fillStyle="#000";
  ctx.fillRect(0,0,canvas.width,canvas.height);
 
  updateStars(); drawStars();
- updateBG(); drawBG();
  updateMeteors(); drawMeteors();
  updateBullets(); drawBullets();
  checkCollision();
- updateDebris(); drawDebris();
  updateBoost();
 
  document.getElementById("score").innerText=game.score;
 
- /* ===== KALKAN BAR ===== */
- let el = document.getElementById("shield");
- el.style.width = game.shield + "%";
+ let el=document.getElementById("shield");
+ el.style.height=game.shield+"%";
 
- if(game.shield > 60) el.style.background="#0ff";
- else if(game.shield > 30) el.style.background="orange";
+ if(game.shield>60) el.style.background="#0ff";
+ else if(game.shield>30) el.style.background="orange";
  else el.style.background="red";
 
- /* ===== GAME OVER ===== */
- if(game.shield <=0){
-  gameOver = true;
-  setTimeout(()=>{
-    alert("OYUN BİTTİ");
-    location.reload();
-  },200);
+ if(game.shield<=0){
+  alert("OYUN BİTTİ");
+  location.reload();
  }
-
- requestAnimationFrame(loop);
 }
 loop();
 
-/* INPUT */
+/* ================= INPUT ================= */
 canvas.addEventListener("touchmove",(e)=>{
- game.targetX = e.touches[0].clientX - canvas.width/2;
+ game.targetX=e.touches[0].clientX;
 });
-
-document.getElementById("fireBtn").addEventListener("touchstart",shoot);
+canvas.addEventListener("touchstart",shoot);
 
 </script>
 </body>
