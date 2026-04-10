@@ -698,11 +698,8 @@ document.getElementById("boostBtn").addEventListener("touchstart", (e) => {
 }, { passive: true });
 document.getElementById("boostBtn").addEventListener("click", tryBoost);  // masaüstü
 
-/* ── BAŞLAT ── */
-document.addEventListener("DOMContentLoaded", () => {
-  initGame();
-  requestAnimationFrame(loop);
-});
+initGame();
+requestAnimationFrame(loop);
 
 </script>
 
