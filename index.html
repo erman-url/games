@@ -87,7 +87,29 @@ function spawnMeteor(){
     vx: Math.cos(angle) * (0.8 + depth * 1.5) * (fromLeft ? 1 : -1),
     vy: Math.sin(angle) * (1 + depth * 2),
     size: 60 + depth * 140,
-   
+  };
+}
+
+/* ======================
+   🪐 PLANET SYSTEM (YENİ)
+====================== */
+const planetImg = new Image();
+planetImg.src = "image/a1.png";
+
+let planet = null;
+
+let planetPhase = 0;
+let planetTimer = 60 * 60;
+
+function spawnPlanet(){
+  const fromLeft = Math.random() > 0.5;
+
+  planet = {
+    x: fromLeft ? -400 : w + 400,
+    y: h * 0.2,
+    dir: fromLeft ? 1 : -1,
+    speed: 0.6,
+    size: Math.min(w,h) * 0.7
   };
 }
 
@@ -220,13 +242,10 @@ function update(){
     }
   }
 
-  /* ☄️ METEOR UPDATE (FIXED) */
+  /* ☄️ METEOR UPDATE */
   if(meteor){
-
     meteor.x += meteor.vx;
     meteor.y += meteor.vy;
-
-
 
     if(
       meteor.x < -300 || 
@@ -235,6 +254,25 @@ function update(){
       meteor.y > h + 200
     ){
       meteor = null;
+    }
+  }
+
+  /* 🪐 PLANET EVENT */
+  if(planetPhase === 0){
+    planetTimer--;
+    if(planetTimer <= 0){
+      spawnPlanet();
+      planetPhase = 1;
+    }
+  }
+
+  /* 🪐 PLANET UPDATE */
+  if(planet){
+    planet.x += planet.dir * planet.speed;
+
+    if(planet.x < -500 || planet.x > w + 500){
+      planet = null;
+      planetPhase = 2;
     }
   }
 }
@@ -272,12 +310,20 @@ function draw(){
     }
   });
 
-  /* ☄️ METEOR DRAW (FULL EFFECT) */
+  /* 🪐 PLANET DRAW */
+  if(planet){
+    ctx.drawImage(
+      planetImg,
+      planet.x,
+      planet.y,
+      planet.size,
+      planet.size
+    );
+  }
+
+  /* ☄️ METEOR DRAW */
   if(meteor){
 
-
-
-    // ✨ GLOW
     const glow = ctx.createRadialGradient(
       meteor.x, meteor.y, 0,
       meteor.x, meteor.y, meteor.size
@@ -291,7 +337,6 @@ function draw(){
     ctx.arc(meteor.x, meteor.y, meteor.size, 0, Math.PI*2);
     ctx.fill();
 
-    // 🚀 METEOR
     ctx.drawImage(
       meteorImg,
       meteor.x,
