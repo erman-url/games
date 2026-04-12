@@ -16,7 +16,6 @@ canvas {
   display: block;
 }
 
-/* 🎯 KOKPIT OVERLAY */
 #cockpit {
   position: fixed;
   bottom: 0;
@@ -32,10 +31,7 @@ canvas {
 
 <canvas id="game"></canvas>
 
-<!-- ✅ KOKPIT PNG -->
 <img id="cockpit" src="image/cockpit.png" />
-
-<!-- 🔊 SES -->
 <audio id="bgSound" src="image/sound-space1.mp3" loop></audio>
 
 <script>
@@ -60,7 +56,8 @@ function createStar(){
   return {
     x: (Math.random()-0.5)*2000,
     y: (Math.random()-0.5)*2000,
-    z: Math.random()*2000 + 1
+    z: Math.random()*2000 + 1,
+    prevZ: 0
   };
 }
 
@@ -83,7 +80,7 @@ function startGyro(){
 }
 
 /* ======================
-   SES + GYRO AKTİVASYON
+   SES + START
 ====================== */
 let started = false;
 
@@ -91,12 +88,10 @@ function startExperience(){
   if(started) return;
   started = true;
 
-  // 🔊 ses başlat (mobil fix)
   const audio = document.getElementById("bgSound");
   audio.volume = 0.5;
   audio.play().catch(()=>{});
 
-  // 📱 gyro başlat
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
     DeviceOrientationEvent.requestPermission()
@@ -112,19 +107,37 @@ window.addEventListener("click", startExperience);
 window.addEventListener("touchstart", startExperience);
 
 /* ======================
-   MOVEMENT
+   WARP CONTROL
 ====================== */
-let speed = 4;
+let baseSpeed = 4;
+let warpSpeed = 20;
+let speed = baseSpeed;
+
+let isWarp = false;
+
+window.addEventListener("mousedown", ()=> isWarp = true);
+window.addEventListener("mouseup", ()=> isWarp = false);
+
+window.addEventListener("touchstart", ()=> isWarp = true);
+window.addEventListener("touchend", ()=> isWarp = false);
 
 /* ======================
    LOOP
 ====================== */
 function update(){
 
-  // smooth dönüş
   yaw += (targetYaw - yaw) * 0.08;
 
+  // hız geçişi (smooth)
+  if(isWarp){
+    speed += (warpSpeed - speed) * 0.1;
+  } else {
+    speed += (baseSpeed - speed) * 0.1;
+  }
+
   stars.forEach(s=>{
+
+    s.prevZ = s.z;
 
     s.z -= speed;
 
@@ -132,9 +145,10 @@ function update(){
       s.x = (Math.random()-0.5)*2000;
       s.y = (Math.random()-0.5)*2000;
       s.z = 2000;
+      s.prevZ = s.z;
     }
 
-    // gerçek rotasyon
+    // SENİN ROTASYONUN (DOKUNMADIM)
     const cos = Math.cos(yaw);
     const sin = Math.sin(yaw);
 
@@ -150,19 +164,34 @@ function draw(){
   ctx.fillStyle = "black";
   ctx.fillRect(0,0,w,h);
 
+  ctx.strokeStyle = "white";
   ctx.fillStyle = "white";
 
   stars.forEach(s=>{
+
     const fov = 300;
+
     const scale = fov / s.z;
+    const prevScale = fov / s.prevZ;
 
     const x = s.x * scale + w/2;
     const y = s.y * scale + h/2;
 
+    const px = s.x * prevScale + w/2;
+    const py = s.y * prevScale + h/2;
+
     if(x<0 || x>w || y<0 || y>h) return;
 
-    const size = (1 - s.z / 2000) * 3;
-    ctx.fillRect(x,y,size,size);
+    if(isWarp){
+      // ✨ WARP ÇİZGİSİ
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    } else {
+      const size = (1 - s.z / 2000) * 3;
+      ctx.fillRect(x,y,size,size);
+    }
   });
 }
 
