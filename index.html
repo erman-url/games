@@ -122,17 +122,31 @@ window.addEventListener("touchstart", ()=> isWarp = true);
 window.addEventListener("touchend", ()=> isWarp = false);
 
 /* ======================
+   FOV CONTROL (YENİ)
+====================== */
+let baseFov = 300;
+let warpFov = 700;
+let currentFov = baseFov;
+
+/* ======================
    LOOP
 ====================== */
 function update(){
 
   yaw += (targetYaw - yaw) * 0.08;
 
-  // hız geçişi (smooth)
+  // hız geçişi
   if(isWarp){
     speed += (warpSpeed - speed) * 0.1;
   } else {
     speed += (baseSpeed - speed) * 0.1;
+  }
+
+  // 🎯 FOV GEÇİŞİ (YENİ)
+  if(isWarp){
+    currentFov += (warpFov - currentFov) * 0.08;
+  } else {
+    currentFov += (baseFov - currentFov) * 0.08;
   }
 
   stars.forEach(s=>{
@@ -148,7 +162,7 @@ function update(){
       s.prevZ = s.z;
     }
 
-    // SENİN ROTASYONUN (DOKUNMADIM)
+    // ROTASYON (SENİN SİSTEM)
     const cos = Math.cos(yaw);
     const sin = Math.sin(yaw);
 
@@ -169,7 +183,8 @@ function draw(){
 
   stars.forEach(s=>{
 
-    const fov = 300;
+    // 🎯 ARTIK DİNAMİK FOV
+    const fov = currentFov;
 
     const scale = fov / s.z;
     const prevScale = fov / s.prevZ;
@@ -183,7 +198,6 @@ function draw(){
     if(x<0 || x>w || y<0 || y>h) return;
 
     if(isWarp){
-      // ✨ WARP ÇİZGİSİ
       ctx.beginPath();
       ctx.moveTo(px, py);
       ctx.lineTo(x, y);
