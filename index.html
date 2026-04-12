@@ -2,661 +2,215 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>SPACE RUNNER ULTRA PRO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cockpit Uzay Uçuşu PRO</title>
 
 <style>
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;overflow:hidden;background:#000;font-family:system-ui;}
-
-#gameCanvas{
-  position:fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
+html, body {
+  margin: 0;
+  overflow: hidden;
+  background: black;
+  touch-action: none;
 }
 
-#cockpit{
-  position:fixed;
-  bottom:0;
-  left:50%;
-  transform:translateX(-50%);
-  width:100%;
-  max-width:500px;
-  pointer-events:none;
-  z-index:5;
-  display:block;
+canvas { display: block; }
+
+.cockpit {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  height: 35%;
+  pointer-events: none;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
 }
 
-#hud{
-  position:fixed;
-  top:10px;
-  left:10px;
-  color:#0ff;
-  z-index:10;
-  font-size:16px;
-  text-shadow:0 0 8px #0ff;
+.hud-line {
+  position: absolute;
+  width: 60%;
+  height: 2px;
+  background: rgba(0,255,255,0.5);
+  left: 20%;
+  bottom: 40%;
 }
 
-/* ── MENÜ ── */
-#menu{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.88);
-  display:flex;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:20px;
-  z-index:20;
-}
-#menu h1{
-  color:#0ff;
-  font-size:clamp(24px,6vw,48px);
-  text-shadow:0 0 20px #0ff;
-  margin:0 0 10px;
-  letter-spacing:4px;
-}
-#menu p{
-  color:#888;
-  font-size:13px;
-  text-align:center;
-  max-width:280px;
-  line-height:1.6;
-  margin:0;
+.controls {
+  position: fixed;
+  bottom: 10px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 40px;
 }
 
-/* ── GAME OVER EKRANI ── */
-#gameOver{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.88);
-  display:none;
-  flex-direction:column;
-  justify-content:center;
-  align-items:center;
-  gap:18px;
-  z-index:20;
+.btn {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: 2px solid white;
+  color: white;
+  text-align: center;
+  line-height: 70px;
+  font-size: 22px;
+  background: rgba(255,255,255,0.1);
+  user-select: none;
 }
-#gameOver h1{color:#f00;font-size:clamp(28px,8vw,60px);text-shadow:0 0 30px #f00;margin:0;letter-spacing:6px;}
-#gameOver .finalScore{color:#fff;font-size:20px;}
-#gameOver .finalScore span{color:#0ff;font-weight:bold;}
-
-/* ── ORTAK BUTON ── */
-.btn{
-  padding:15px 36px;
-  background:transparent;
-  color:#0ff;
-  border:2px solid #0ff;
-  border-radius:10px;
-  font-weight:bold;
-  font-size:16px;
-  cursor:pointer;
-  letter-spacing:2px;
-  text-transform:uppercase;
-  box-shadow:0 0 12px #0ff4;
-  transition:background .2s, box-shadow .2s;
-  -webkit-tap-highlight-color:transparent;
-}
-.btn:active{background:#0ff2;box-shadow:0 0 20px #0ff8;}
-
-/* ── ATEŞ BUTONU ── */
-#fireBtn{
-  position:fixed;
-  bottom:60px;
-  right:25px;
-  width:80px;
-  height:80px;
-  border-radius:50%;
-  background:rgba(0,255,255,0.18);
-  border:2px solid rgba(0,255,255,0.5);
-  z-index:15;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#0ff;
-  font-size:11px;
-  font-weight:bold;
-  letter-spacing:1px;
-  -webkit-tap-highlight-color:transparent;
-  user-select:none;
-}
-
-/* ── BOOST BUTONU ── */
-#boostBtn{
-  position:fixed;
-  bottom:60px;
-  left:25px;
-  width:80px;
-  height:80px;
-  border-radius:50%;
-  background:rgba(255,80,0,0.25);
-  border:2px solid rgba(255,80,0,0.7);
-  z-index:15;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#fa0;
-  font-size:11px;
-  font-weight:bold;
-  letter-spacing:1px;
-  -webkit-tap-highlight-color:transparent;
-  user-select:none;
-}
-
-/* ── KALKAN ÇUBUĞU ── */
-#shieldBar{
-  position:fixed;
-  right:10px;
-  top:50%;
-  transform:translateY(-50%);
-  width:14px;
-  height:200px;
-  background:#111;
-  border:1px solid #333;
-  border-radius:8px;
-  z-index:30;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-  justify-content:flex-end;
-}
-#shield{
-  width:100%;
-  height:100%;
-  background:#0ff;
-  transition:background .3s;
-  border-radius:8px;
-}
-
-/* ── BOOST GÖSTERGESI ── */
-#boostBar{
-  position:fixed;
-  left:10px;
-  top:50%;
-  transform:translateY(-50%);
-  width:14px;
-  height:120px;
-  background:#111;
-  border:1px solid #333;
-  border-radius:8px;
-  z-index:30;
-  overflow:hidden;
-  display:flex;
-  flex-direction:column;
-  justify-content:flex-end;
-}
-#boostFill{
-  width:100%;
-  height:100%;
-  background:#fa0;
-  border-radius:8px;
-  transition:background .3s;
-}
-
-#fireBtn{
-  pointer-events:auto;
-}
-
-#fireBtn{
-  touch-action: manipulation;
-}
-
-#fireBtn, #boostBtn{
-  z-index:9999;
-  pointer-events:auto;
-  touch-action:manipulation;
-}
-
 </style>
 </head>
 
 <body>
 
-<canvas id="gameCanvas"></canvas>
-<img src="image/cockpit.png" id="cockpit" onerror="this.style.display='none'">
+<canvas id="game"></canvas>
 
-<!-- Butonlar -->
-<div id="fireBtn">ATEŞ</div>
-<div id="boostBtn">BOOST</div>
-
-<!-- Kalkan bar -->
-<div id="shieldBar"><div id="shield"></div></div>
-
-<!-- Boost bar -->
-<div id="boostBar"><div id="boostFill"></div></div>
-
-<!-- HUD -->
-<div id="hud">SCORE: <span id="score">0</span></div>
-
-<!-- Başlangıç menüsü -->
-<div id="menu">
-  <h1>SPACE RUNNER</h1>
-  <p>Ekranın sol/sağına dokun → hareket<br>ATEŞ butonuna bas → mermi at<br>BOOST → meteor geçirgen mod</p>
-  <button class="btn" id="startBtn">BAŞLAT</button>
+<div class="cockpit">
+  <div class="hud-line"></div>
 </div>
 
-<!-- Game Over ekranı -->
-<div id="gameOver">
-  <h1>GAME OVER</h1>
-  <div class="finalScore">SKOR: <span id="finalScore">0</span></div>
-  <button class="btn" id="restartBtn">YENİDEN OYNA</button>
+<div class="controls">
+  <div class="btn" id="left">◀</div>
+  <div class="btn" id="right">▶</div>
 </div>
+
 <script>
-/* =====================================================
-   SPACE RUNNER ULTRA PRO — Düzeltilmiş Versiyon
-   Düzeltilen hatalar:
-   1. Çift touchmove listener → tek listener kaldı
-   2. targetX koordinat sistemi düzeltildi (canvas ortası referanslı)
-   3. Her dokunuşta ateş açılıyordu → yalnızca fireBtn ateş ediyor
-   4. Mermi çarpışma y offset hatası → project'ten gelen y kullanıldı
-   5. Meteor çizimi her frame'de random titremesi → shapes saklandı
-   6. Tek meteor birden fazla hasar verebiliyordu → hitCounted flag
-   7. alert() → özel Game Over ekranı
-   8. Yıldız z başlangıcı → canvas.width ile düzgün init
-   9. Boost göstergesi eklendi (cooldown/durum)
-   10. Oyun dengesi iyileştirildi (hasar miktarı, meteor hızı, spawn)
-===================================================== */
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-/* ── CANVAS ── */
-const canvas = document.getElementById("gameCanvas");
-const ctx    = canvas.getContext("2d");
-
+let w,h;
 function resize(){
-  canvas.width  = innerWidth;
-  canvas.height = innerHeight;
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
 }
+window.addEventListener("resize", resize);
 resize();
-addEventListener("resize", resize);
 
-/* ── SABITLER ── */
-const BOOST_DURATION   = 180;   // frame (yaklaşık 3 sn)
-const BOOST_COOLDOWN   = 300;   // frame (yaklaşık 5 sn)
-const SHIELD_DAMAGE    = 8;     // her çarpışmada düşen kalkan
-const SHOOT_COOLDOWN   = 8;     // frame — çok hızlı ateş engeli
-const METEOR_INTERVAL  = 900;   // ms
-const BG_INTERVAL      = 4000;  // ms
+/* ======================
+   STARFIELD
+====================== */
+const stars = [];
+const STAR_COUNT = 600;
 
-/* ── OYUN DURUMU ── */
-let game;
-
-function initGame(){
-  game = {
-    running:      false,
-    score:        0,
-    playerX:      0,          // canvas merkezi referanslı offset
-    targetX:      0,          // canvas merkezi referanslı offset
-    bullets:      [],         // (zaten vardı) 🔥 KULLANILACAK
-    meteors:      [],
-    stars:        [],
-    bgObject:     null,
-    shield:       100,        // 0–100
-    boost:        false,
-    boostTimer:   0,
-    boostCooldown:0,
-    shootCooldown:0,
-  };
-  initStars();
+for(let i=0;i<STAR_COUNT;i++){
+  stars.push(resetStar());
 }
 
-/* ── YILDIZLAR ── */
-function initStars(){
-  game.stars = [];
-  for(let i = 0; i < 140; i++){
-    game.stars.push(randomStar(true));
-  }
-}
-
-function randomStar(randomZ){
+function resetStar(){
   return {
-    x: (Math.random() - 0.5) * canvas.width  * 2,
-    y: (Math.random() - 0.5) * canvas.height * 2,
-    z: randomZ ? Math.random() * canvas.width : canvas.width
+    x: (Math.random()-0.5)*w,
+    y: (Math.random()-0.5)*h,
+    z: Math.random()*w
   };
 }
 
-function updateStars(){
-  const sp = game.boost ? 28 : 7;
-  for(let s of game.stars){
-    s.z -= sp;
-    if(s.z < 1){
-      Object.assign(s, randomStar(false));
-    }
+/* ======================
+   PRO CONTROL SYSTEM
+====================== */
+let yaw = 0;
+let targetYaw = 0; // smooth hedef
+let baseSpeed = 3;
+let speed = baseSpeed;
+
+/* ===== GYRO ===== */
+let gyroEnabled = false;
+
+function enableGyro(){
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if(response === "granted"){
+          gyroEnabled = true;
+        }
+      });
+  } else {
+    gyroEnabled = true;
   }
 }
 
-function drawStars(){
-  ctx.fillStyle = "#fff";
-  for(let s of game.stars){
-    const p = project(s.x, s.y, s.z);
-    const size = Math.max(0.5, 2.5 * (1 - s.z / canvas.width));
-    if(p.x > 0 && p.x < canvas.width && p.y > 0 && p.y < canvas.height){
-      ctx.fillRect(p.x, p.y, size, size);
-    }
-  }
-}
+// kullanıcı dokununca aktif et (iOS şartı)
+window.addEventListener("click", enableGyro);
 
-/* ── PROJEKSIYON ── */
-function project(x, y, z){
-  const s = 300 / z;
-  return {
-    x:     x * s + canvas.width  / 2,
-    y:     y * s + canvas.height / 2,
-    scale: s
-  };
-}
+/* GYRO EVENT */
+window.addEventListener("deviceorientation", (e)=>{
+  if(!gyroEnabled) return;
 
-/* =====================================================
-   🔥 YENİ ATEŞ SİSTEMİ (SADECE EKLENDİ)
-===================================================== */
+  // gamma = sağ/sol tilt
+  let tilt = e.gamma;
 
-function shoot(){
-  if(!game.running) return;
-  if(game.shootCooldown > 0) return;
+  // normalize (-45 / +45)
+  let normalized = Math.max(-45, Math.min(45, tilt));
 
-  game.shootCooldown = SHOOT_COOLDOWN;
-
-  const cx = game.playerX;
-
-  // 🔥 cockpit sol + sağ namlu
-  const offset = 18;
-
-  const baseY = canvas.height * 0.32;
-  const baseZ = 70;
-
-  // sol mermi
-  game.bullets.push({
-    x: cx - offset,
-    y: baseY,
-    z: baseZ
-  });
-
-  // sağ mermi
-  game.bullets.push({
-    x: cx + offset,
-    y: baseY,
-    z: baseZ
-  });
-}
-
-function updateBullets(){
-  if(game.shootCooldown > 0) game.shootCooldown--;
-
-  for(let b of game.bullets){
-    b.z -= 18;
-  }
-
-  game.bullets = game.bullets.filter(b => b.z > 1);
-}
-
-// 🔥 EKLENDİ
-function drawBullets(){
-  ctx.fillStyle = "#0ff";
-
-  for(let b of game.bullets){
-    const p = project(b.x, b.y, b.z);
-
-    ctx.fillRect(
-      p.x - 3 * p.scale,
-      p.y,
-      6 * p.scale,
-      20 * p.scale
-    );
-  }
-}
-
-/* ── ARKA PLAN NESNELERİ ── */
-const bgImgs = {};
-["sun","nebula","meteor","meteor1"].forEach(k => {
-  const img = new Image();
-  img.src = `image/${k}.png`;
-  bgImgs[k] = img;
+  // hedef yaw
+  targetYaw = normalized * 0.002;
 });
 
-function spawnBG(){
-  if(!game || !game.running || game.bgObject) return;
-  const keys = Object.keys(bgImgs);
-  const key  = keys[Math.floor(Math.random() * keys.length)];
-  game.bgObject = {
-    img: bgImgs[key],
-    x:   (Math.random() - 0.5) * canvas.width  * 0.5,
-    y:   (Math.random() - 0.5) * canvas.height * 0.5,
-    z:   canvas.width
-  };
-}
+/* ===== FALLBACK BUTTON ===== */
+let turnLeft=false, turnRight=false;
 
-function updateBG(){
-  if(!game.bgObject) return;
-  game.bgObject.z -= 2;
-  if(game.bgObject.z < 1) game.bgObject = null;
-}
+document.getElementById("left").ontouchstart = ()=>turnLeft=true;
+document.getElementById("left").ontouchend = ()=>turnLeft=false;
 
-function drawBG(){
-  if(!game.bgObject) return;
-  const p = project(game.bgObject.x, game.bgObject.y, game.bgObject.z);
-  ctx.globalAlpha = 0.55;
-  try { ctx.drawImage(game.bgObject.img, p.x, p.y, 220 * p.scale, 220 * p.scale); }
-  catch(e){}
-  ctx.globalAlpha = 1;
-}
+document.getElementById("right").ontouchstart = ()=>turnRight=true;
+document.getElementById("right").ontouchend = ()=>turnRight=false;
 
-/* ── METEORLAR ── */
-function buildMeteorShape(sides, size){
-  const pts = [];
-  for(let i = 0; i < sides; i++){
-    const a = i * Math.PI * 2 / sides;
-    const r = size * (0.65 + Math.random() * 0.45);
-    pts.push({ a, r });
-  }
-  return pts;
-}
+window.addEventListener("keydown", e=>{
+  if(e.key==="ArrowLeft") turnLeft=true;
+  if(e.key==="ArrowRight") turnRight=true;
+});
+window.addEventListener("keyup", e=>{
+  if(e.key==="ArrowLeft") turnLeft=false;
+  if(e.key==="ArrowRight") turnRight=false;
+});
 
-function spawnMeteor(){
-  if(!game || !game.running) return;
-  const speeds   = [4, 5, 7, 9];
-  const corridor = canvas.width * 0.25;
-  const sides    = 6 + Math.floor(Math.random() * 3);
-  const sz       = 28 + Math.random() * 16;
-  game.meteors.push({
-    x:           (Math.random() - 0.5) * corridor,
-    y:           (Math.random() - 0.3) * canvas.height * 0.8,
-    z:           canvas.width,
-    size:        sz,
-    speed:       speeds[Math.floor(Math.random() * speeds.length)],
-    shape:       buildMeteorShape(sides, sz),
-    hit:         false,
-    hitCounted:  false
+/* ======================
+   LOOP
+====================== */
+function update(){
+
+  // fallback kontrol
+  if(turnLeft) targetYaw -= 0.02;
+  if(turnRight) targetYaw += 0.02;
+
+  // SMOOTHING (kritik)
+  yaw += (targetYaw - yaw) * 0.08;
+
+  stars.forEach(s=>{
+    s.z -= speed;
+
+    if(s.z <= 1){
+      Object.assign(s, resetStar());
+      s.z = w;
+    }
+
+    // daha doğal drift
+    s.x += yaw * 50;
   });
 }
 
-function updateMeteors(){
-  for(let m of game.meteors) m.z -= m.speed;
-  game.meteors = game.meteors.filter(m => m.z > 1 && !m.hit);
+function draw(){
+  ctx.fillStyle = "black";
+  ctx.fillRect(0,0,w,h);
+
+  ctx.fillStyle = "white";
+
+  stars.forEach(s=>{
+    const k = 128 / s.z;
+    const x = s.x * k + w/2;
+    const y = s.y * k + h/2;
+
+    if(x<0 || x>=w || y<0 || y>=h) return;
+
+    const size = (1 - s.z / w) * 3;
+    ctx.fillRect(x,y,size,size);
+  });
 }
 
-function drawMeteors(){
-  ctx.fillStyle = "#888";
-  for(let m of game.meteors){
-    const p = project(m.x, m.y, m.z);
-    ctx.beginPath();
-    for(let i = 0; i < m.shape.length; i++){
-      const pt = m.shape[i];
-      const px = p.x + Math.cos(pt.a) * pt.r * p.scale;
-      const py = p.y + Math.sin(pt.a) * pt.r * p.scale;
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-}
-
-/* ── ÇARPIŞMA ── */
-function checkCollision(){
-  for(let m of game.meteors){
-    if(m.hit) continue;
-    const mp   = project(m.x, m.y, m.z);
-    const mRad = m.size * mp.scale;
-
-    if(!m.hit && !m.hitCounted && m.z < 100 && !game.boost){
-      m.hitCounted = true;
-      m.hit        = true;
-      game.shield -= SHIELD_DAMAGE;
-      if(game.shield < 0) game.shield = 0;
-    }
-  }
-
-  game.meteors = game.meteors.filter(m => !m.hit);
-  game.bullets = game.bullets.filter(b => !b.hit);
-}
-
-/* ── BOOST ── */
-function tryBoost(){
-  if(!game.running) return;
-  if(game.boost || game.boostCooldown > 0) return;
-  game.boost      = true;
-  game.boostTimer = BOOST_DURATION;
-}
-
-function updateBoost(){
-  if(game.boost){
-    game.boostTimer--;
-    if(game.boostTimer <= 0){
-      game.boost        = false;
-      game.boostCooldown = BOOST_COOLDOWN;
-    }
-  } else if(game.boostCooldown > 0){
-    game.boostCooldown--;
-  }
-}
-
-/* ── HUD ── */
-function updateHUD(){
-  const scoreEl  = document.getElementById("score");
-  const shieldEl = document.getElementById("shield");
-  const boostEl  = document.getElementById("boostFill");
-
-  if(scoreEl){
-    scoreEl.innerText = game.score;
-  }
-
-  if(shieldEl){
-    shieldEl.style.height = game.shield + "%";
-    if(game.shield > 60)      shieldEl.style.background = "#0ff";
-    else if(game.shield > 30) shieldEl.style.background = "orange";
-    else                      shieldEl.style.background = "red";
-  }
-
-  if(boostEl){
-    if(game.boost){
-      boostEl.style.height     = (game.boostTimer / BOOST_DURATION * 100) + "%";
-      boostEl.style.background = "#fa0";
-    } else if(game.boostCooldown > 0){
-      boostEl.style.height     = ((BOOST_COOLDOWN - game.boostCooldown) / BOOST_COOLDOWN * 100) + "%";
-      boostEl.style.background = "#444";
-    } else {
-      boostEl.style.height     = "100%";
-      boostEl.style.background = "#fa0";
-    }
-  }
-}
-
-/* ── GAME OVER ── */
-function triggerGameOver(){
-  game.running = false;
-  document.getElementById("finalScore").innerText = game.score;
-  document.getElementById("gameOver").style.display = "flex";
-}
-
-/* ── ANA DÖNGÜ ── */
-let bgTimer   = 0;
-let metTimer  = 0;
-let lastTime  = 0;
-
-function loop(ts){
+function loop(){
+  update();
+  draw();
   requestAnimationFrame(loop);
-  if(!game.running) return;
-
-  const dt = ts - lastTime;
-  lastTime = ts;
-
-  bgTimer  += dt;
-  metTimer += dt;
-  if(bgTimer  > BG_INTERVAL)     { spawnBG();     bgTimer  = 0; }
-  if(metTimer > METEOR_INTERVAL) { spawnMeteor(); metTimer = 0; }
-
-  game.playerX += (game.targetX - game.playerX) * 0.1;
-
-  ctx.fillStyle = "#000";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  updateStars();   drawStars();
-  updateBG();      drawBG();
-  updateMeteors(); drawMeteors();
-
-  // 🔥 EKLENDİ
-  updateBullets();
-  drawBullets();
-  checkCollision();
-  updateBoost();
-  updateHUD();
-
-  if(game.shield <= 0) triggerGameOver();
 }
 
-/* ── BAŞLAT / YENİDEN OYNA ── */
-function startGame(){
-  document.getElementById("menu").style.display     = "none";
-  document.getElementById("gameOver").style.display = "none";
-
-  initGame();
-  game.running = true;
-
-  bgTimer  = 0;
-  metTimer = 0;
-  lastTime = performance.now();
-}
-
-document.getElementById("startBtn").addEventListener("click",   startGame);
-document.getElementById("restartBtn").addEventListener("click", startGame);
-document.getElementById("startBtn").addEventListener("touchend",   e=>{ e.preventDefault(); startGame(); });
-document.getElementById("restartBtn").addEventListener("touchend", e=>{ e.preventDefault(); startGame(); });
-
-/* ── INPUT ── */
-canvas.addEventListener("touchmove", (e) => {
-  if(!game || !game.running) return;
-  if(e.touches.length > 0){
-    game.targetX = e.touches[0].clientX - canvas.width / 2;
-  }
-}, { passive: true });
-
-const fireBtn = document.getElementById("fireBtn");
-
-// 🔥 EKLENDİ
-fireBtn.addEventListener("pointerdown", (e)=>{
-  e.preventDefault();
-  e.stopPropagation();
-  shoot();
-});
-
-canvas.addEventListener("mousemove", (e) => {
-  if(!game || !game.running) return;
-  game.targetX = e.clientX - canvas.width / 2;
-});
-
-document.addEventListener("keydown", (e) => {
-  if(e.code === "Space") shoot();
-});
-
-document.getElementById("boostBtn").addEventListener("touchstart", (e) => {
-  e.stopPropagation();
-  tryBoost();
-}, { passive: true });
-document.getElementById("boostBtn").addEventListener("click", tryBoost);
-
-initGame();
-requestAnimationFrame(loop);
-
+loop();
 </script>
 
 </body>
