@@ -11,12 +11,32 @@ html, body {
   overflow: hidden;
   background: black;
 }
-canvas { display:block; }
+
+canvas {
+  display: block;
+}
+
+/* 🎯 KOKPIT OVERLAY */
+#cockpit {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
 </style>
 </head>
 
 <body>
+
 <canvas id="game"></canvas>
+
+<!-- ✅ KOKPIT PNG -->
+<img id="cockpit" src="image/cockpit.png" />
+
+<!-- 🔊 SES -->
+<audio id="bgSound" src="image/sound-space1.mp3" loop></audio>
 
 <script>
 const canvas = document.getElementById("game");
@@ -31,7 +51,7 @@ window.addEventListener("resize", resize);
 resize();
 
 /* ======================
-   TRUE 3D STARFIELD
+   STARFIELD
 ====================== */
 const STAR_COUNT = 800;
 const stars = [];
@@ -54,28 +74,42 @@ for(let i=0;i<STAR_COUNT;i++){
 let yaw = 0;
 let targetYaw = 0;
 
-function enableGyro(){
+function startGyro(){
+  window.addEventListener("deviceorientation", e=>{
+    let tilt = e.gamma || 0;
+    tilt = Math.max(-45, Math.min(45, tilt));
+    targetYaw = tilt * 0.0025;
+  });
+}
+
+/* ======================
+   SES + GYRO AKTİVASYON
+====================== */
+let started = false;
+
+function startExperience(){
+  if(started) return;
+  started = true;
+
+  // 🔊 ses başlat (mobil fix)
+  const audio = document.getElementById("bgSound");
+  audio.volume = 0.5;
+  audio.play().catch(()=>{});
+
+  // 📱 gyro başlat
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission().then(res=>{
-      if(res==="granted") startGyro();
-    });
+    DeviceOrientationEvent.requestPermission()
+      .then(res=>{
+        if(res==="granted") startGyro();
+      });
   } else {
     startGyro();
   }
 }
 
-function startGyro(){
-  window.addEventListener("deviceorientation", e=>{
-    let tilt = e.gamma || 0;
-
-    tilt = Math.max(-45, Math.min(45, tilt));
-
-    targetYaw = tilt * 0.0025;
-  });
-}
-
-window.addEventListener("click", enableGyro);
+window.addEventListener("click", startExperience);
+window.addEventListener("touchstart", startExperience);
 
 /* ======================
    MOVEMENT
@@ -92,17 +126,15 @@ function update(){
 
   stars.forEach(s=>{
 
-    // ileri hareket
     s.z -= speed;
 
-    // Z reset (sonsuzluk)
     if(s.z <= 1){
       s.x = (Math.random()-0.5)*2000;
       s.y = (Math.random()-0.5)*2000;
       s.z = 2000;
     }
 
-    // YAW dönüşü (GERÇEK ROTASYON)
+    // gerçek rotasyon
     const cos = Math.cos(yaw);
     const sin = Math.sin(yaw);
 
@@ -121,7 +153,6 @@ function draw(){
   ctx.fillStyle = "white";
 
   stars.forEach(s=>{
-
     const fov = 300;
     const scale = fov / s.z;
 
@@ -131,7 +162,6 @@ function draw(){
     if(x<0 || x>w || y<0 || y>h) return;
 
     const size = (1 - s.z / 2000) * 3;
-
     ctx.fillRect(x,y,size,size);
   });
 }
