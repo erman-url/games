@@ -66,6 +66,32 @@ for(let i=0;i<STAR_COUNT;i++){
 }
 
 /* ======================
+   METEOR SYSTEM (FIX + EFFECT)
+====================== */
+const meteorImg = new Image();
+meteorImg.src = "image/m1.png";
+
+let meteor = null;
+
+let meteorPhase = 0;
+let meteorTimer = 30 * 60;
+
+function spawnMeteor(){
+  const fromLeft = Math.random() > 0.3;
+  const depth = Math.random();
+  const angle = (Math.random() - 0.5) * 0.4;
+
+  meteor = {
+    x: fromLeft ? -200 : w + 200,
+    y: Math.random() * h * 0.6,
+    vx: Math.cos(angle) * (0.8 + depth * 1.5) * (fromLeft ? 1 : -1),
+    vy: Math.sin(angle) * (1 + depth * 2),
+    size: 60 + depth * 140,
+   
+  };
+}
+
+/* ======================
    GYRO CONTROL
 ====================== */
 let yaw = 0;
@@ -122,7 +148,7 @@ window.addEventListener("touchstart", ()=> isWarp = true);
 window.addEventListener("touchend", ()=> isWarp = false);
 
 /* ======================
-   FOV CONTROL (YENİ)
+   FOV CONTROL
 ====================== */
 let baseFov = 300;
 let warpFov = 700;
@@ -135,22 +161,20 @@ function update(){
 
   yaw += (targetYaw - yaw) * 0.08;
 
-  // hız geçişi
   if(isWarp){
     speed += (warpSpeed - speed) * 0.1;
   } else {
     speed += (baseSpeed - speed) * 0.1;
   }
 
-  // 🎯 FOV GEÇİŞİ (YENİ)
   if(isWarp){
     currentFov += (warpFov - currentFov) * 0.08;
   } else {
     currentFov += (baseFov - currentFov) * 0.08;
   }
 
+  /* ⭐ STARS */
   stars.forEach(s=>{
-
     s.prevZ = s.z;
 
     s.z -= speed;
@@ -162,7 +186,6 @@ function update(){
       s.prevZ = s.z;
     }
 
-    // ROTASYON (SENİN SİSTEM)
     const cos = Math.cos(yaw);
     const sin = Math.sin(yaw);
 
@@ -172,6 +195,48 @@ function update(){
     s.x = x;
     s.z = z;
   });
+
+  /* ☄️ METEOR EVENT */
+  if(meteorPhase === 0){
+    meteorTimer--;
+    if(meteorTimer <= 0){
+      spawnMeteor();
+      meteorPhase = 1;
+    }
+  }
+
+  else if(meteorPhase === 1){
+    if(!meteor){
+      meteorPhase = 2;
+      meteorTimer = 180 * 60;
+    }
+  }
+
+  else if(meteorPhase === 2){
+    meteorTimer--;
+    if(meteorTimer <= 0){
+      spawnMeteor();
+      meteorPhase = 3;
+    }
+  }
+
+  /* ☄️ METEOR UPDATE (FIXED) */
+  if(meteor){
+
+    meteor.x += meteor.vx;
+    meteor.y += meteor.vy;
+
+
+
+    if(
+      meteor.x < -300 || 
+      meteor.x > w + 300 ||
+      meteor.y < -200 ||
+      meteor.y > h + 200
+    ){
+      meteor = null;
+    }
+  }
 }
 
 function draw(){
@@ -181,9 +246,8 @@ function draw(){
   ctx.strokeStyle = "white";
   ctx.fillStyle = "white";
 
+  /* ⭐ STARS */
   stars.forEach(s=>{
-
-    // 🎯 ARTIK DİNAMİK FOV
     const fov = currentFov;
 
     const scale = fov / s.z;
@@ -207,6 +271,35 @@ function draw(){
       ctx.fillRect(x,y,size,size);
     }
   });
+
+  /* ☄️ METEOR DRAW (FULL EFFECT) */
+  if(meteor){
+
+
+
+    // ✨ GLOW
+    const glow = ctx.createRadialGradient(
+      meteor.x, meteor.y, 0,
+      meteor.x, meteor.y, meteor.size
+    );
+
+    glow.addColorStop(0, "rgba(255,200,100,0.9)");
+    glow.addColorStop(1, "rgba(255,100,0,0)");
+
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(meteor.x, meteor.y, meteor.size, 0, Math.PI*2);
+    ctx.fill();
+
+    // 🚀 METEOR
+    ctx.drawImage(
+      meteorImg,
+      meteor.x,
+      meteor.y,
+      meteor.size,
+      meteor.size
+    );
+  }
 }
 
 function loop(){
