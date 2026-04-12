@@ -3,72 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cockpit Uzay Uçuşu PRO</title>
+<title>Uzay Cockpit PRO</title>
 
 <style>
 html, body {
   margin: 0;
   overflow: hidden;
   background: black;
-  touch-action: none;
 }
-
-canvas { display: block; }
-
-.cockpit {
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  height: 35%;
-  pointer-events: none;
-  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-}
-
-.hud-line {
-  position: absolute;
-  width: 60%;
-  height: 2px;
-  background: rgba(0,255,255,0.5);
-  left: 20%;
-  bottom: 40%;
-}
-
-.controls {
-  position: fixed;
-  bottom: 10px;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  gap: 40px;
-}
-
-.btn {
-  width: 70px;
-  height: 70px;
-  border-radius: 50%;
-  border: 2px solid white;
-  color: white;
-  text-align: center;
-  line-height: 70px;
-  font-size: 22px;
-  background: rgba(255,255,255,0.1);
-  user-select: none;
-}
+canvas { display:block; }
 </style>
 </head>
 
 <body>
-
 <canvas id="game"></canvas>
-
-<div class="cockpit">
-  <div class="hud-line"></div>
-</div>
-
-<div class="controls">
-  <div class="btn" id="left">◀</div>
-  <div class="btn" id="right">▶</div>
-</div>
 
 <script>
 const canvas = document.getElementById("game");
@@ -83,106 +31,86 @@ window.addEventListener("resize", resize);
 resize();
 
 /* ======================
-   STARFIELD
+   TRUE 3D STARFIELD
 ====================== */
+const STAR_COUNT = 800;
 const stars = [];
-const STAR_COUNT = 600;
 
-for(let i=0;i<STAR_COUNT;i++){
-  stars.push(resetStar());
-}
-
-function resetStar(){
+function createStar(){
   return {
-    x: (Math.random()-0.5)*w,
-    y: (Math.random()-0.5)*h,
-    z: Math.random()*w
+    x: (Math.random()-0.5)*2000,
+    y: (Math.random()-0.5)*2000,
+    z: Math.random()*2000 + 1
   };
 }
 
+for(let i=0;i<STAR_COUNT;i++){
+  stars.push(createStar());
+}
+
 /* ======================
-   PRO CONTROL SYSTEM
+   GYRO CONTROL
 ====================== */
 let yaw = 0;
-let targetYaw = 0; // smooth hedef
-let baseSpeed = 3;
-let speed = baseSpeed;
-
-/* ===== GYRO ===== */
-let gyroEnabled = false;
+let targetYaw = 0;
 
 function enableGyro(){
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
-    
-    DeviceOrientationEvent.requestPermission()
-      .then(response => {
-        if(response === "granted"){
-          gyroEnabled = true;
-        }
-      });
+    DeviceOrientationEvent.requestPermission().then(res=>{
+      if(res==="granted") startGyro();
+    });
   } else {
-    gyroEnabled = true;
+    startGyro();
   }
 }
 
-// kullanıcı dokununca aktif et (iOS şartı)
+function startGyro(){
+  window.addEventListener("deviceorientation", e=>{
+    let tilt = e.gamma || 0;
+
+    tilt = Math.max(-45, Math.min(45, tilt));
+
+    targetYaw = tilt * 0.0025;
+  });
+}
+
 window.addEventListener("click", enableGyro);
 
-/* GYRO EVENT */
-window.addEventListener("deviceorientation", (e)=>{
-  if(!gyroEnabled) return;
-
-  // gamma = sağ/sol tilt
-  let tilt = e.gamma;
-
-  // normalize (-45 / +45)
-  let normalized = Math.max(-45, Math.min(45, tilt));
-
-  // hedef yaw
-  targetYaw = normalized * 0.002;
-});
-
-/* ===== FALLBACK BUTTON ===== */
-let turnLeft=false, turnRight=false;
-
-document.getElementById("left").ontouchstart = ()=>turnLeft=true;
-document.getElementById("left").ontouchend = ()=>turnLeft=false;
-
-document.getElementById("right").ontouchstart = ()=>turnRight=true;
-document.getElementById("right").ontouchend = ()=>turnRight=false;
-
-window.addEventListener("keydown", e=>{
-  if(e.key==="ArrowLeft") turnLeft=true;
-  if(e.key==="ArrowRight") turnRight=true;
-});
-window.addEventListener("keyup", e=>{
-  if(e.key==="ArrowLeft") turnLeft=false;
-  if(e.key==="ArrowRight") turnRight=false;
-});
+/* ======================
+   MOVEMENT
+====================== */
+let speed = 4;
 
 /* ======================
    LOOP
 ====================== */
 function update(){
 
-  // fallback kontrol
-  if(turnLeft) targetYaw -= 0.02;
-  if(turnRight) targetYaw += 0.02;
-
-  // SMOOTHING (kritik)
+  // smooth dönüş
   yaw += (targetYaw - yaw) * 0.08;
 
   stars.forEach(s=>{
+
+    // ileri hareket
     s.z -= speed;
 
+    // Z reset (sonsuzluk)
     if(s.z <= 1){
-      Object.assign(s, resetStar());
-      s.z = w;
+      s.x = (Math.random()-0.5)*2000;
+      s.y = (Math.random()-0.5)*2000;
+      s.z = 2000;
     }
 
-    // daha doğal drift
-    s.x += yaw * 50;
+    // YAW dönüşü (GERÇEK ROTASYON)
+    const cos = Math.cos(yaw);
+    const sin = Math.sin(yaw);
+
+    const x = s.x * cos - s.z * sin;
+    const z = s.x * sin + s.z * cos;
+
+    s.x = x;
+    s.z = z;
   });
 }
 
@@ -193,13 +121,17 @@ function draw(){
   ctx.fillStyle = "white";
 
   stars.forEach(s=>{
-    const k = 128 / s.z;
-    const x = s.x * k + w/2;
-    const y = s.y * k + h/2;
 
-    if(x<0 || x>=w || y<0 || y>=h) return;
+    const fov = 300;
+    const scale = fov / s.z;
 
-    const size = (1 - s.z / w) * 3;
+    const x = s.x * scale + w/2;
+    const y = s.y * scale + h/2;
+
+    if(x<0 || x>w || y<0 || y>h) return;
+
+    const size = (1 - s.z / 2000) * 3;
+
     ctx.fillRect(x,y,size,size);
   });
 }
