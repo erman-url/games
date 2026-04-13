@@ -64,11 +64,15 @@ function createStar(){
 for(let i=0;i<STAR_COUNT;i++){
   stars.push(createStar());
 }
-
 /* ======================
    METEOR SYSTEM (FIX + EFFECT)
 ====================== */
 const meteorImg = new Image();
+
+// 🔥 önce event
+meteorImg.onload = () => console.log("meteor loaded");
+
+// 🔥 sonra src
 meteorImg.src = "image/m1.png";
 
 let meteor = null;
@@ -90,10 +94,16 @@ function spawnMeteor(){
   };
 }
 
+
 /* ======================
    🪐 PLANET SYSTEM (YENİ)
 ====================== */
 const planetImg = new Image();
+
+// 🔥 önce event
+planetImg.onload = () => console.log("planet loaded");
+
+// 🔥 sonra src
 planetImg.src = "image/a1.png";
 
 let planet = null;
