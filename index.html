@@ -48,10 +48,10 @@ resize();
 /* ======================
    📱 MOBILE DETECT
 ====================== */
-const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
 /* ======================
-   ⭐ PERFORMANCE WATCHDOG (YENİ)
+   ⭐ PERFORMANCE WATCHDOG
 ====================== */
 let fps = 60;
 let frameCount = 0;
@@ -67,7 +67,7 @@ let camDriftY = 0;
 /* ======================
    ⭐ STARFIELD
 ====================== */
-let STAR_COUNT = Math.floor((isMobile ? 260 : 400) * quality);
+let STAR_COUNT = Math.floor((isMobile ? 220 : 400) * quality);
 let stars = [];
 
 function createStar(){
@@ -86,14 +86,12 @@ function generateStars(){
     stars.push(createStar());
   }
 }
-
 generateStars();
 
 /* ======================
    METEOR
 ====================== */
 const meteorImg = new Image();
-meteorImg.onload = () => console.log("meteor loaded");
 meteorImg.src = "image/m1.png";
 
 let meteor = null;
@@ -108,9 +106,9 @@ function spawnMeteor(){
   meteor = {
     x: fromLeft ? -200 : w + 200,
     y: Math.random() * h * 0.6,
-    vx: Math.cos(angle) * (0.5 + depth * 1.0),
-    vy: Math.sin(angle) * (1 + depth * 1.2),
-    size: 50 + depth * 120,
+    vx: Math.cos(angle) * (0.5 + depth),
+    vy: Math.sin(angle) * (1 + depth),
+    size: 50 + depth * 100,
   };
 }
 
@@ -118,7 +116,6 @@ function spawnMeteor(){
    PLANET
 ====================== */
 const planetImg = new Image();
-planetImg.onload = () => console.log("planet loaded");
 planetImg.src = "image/a1.png";
 
 let planet = null;
@@ -138,21 +135,36 @@ function spawnPlanet(){
 }
 
 /* ======================
-   GYRO
+   GYRO (FULL FIX)
 ====================== */
 let yaw = 0;
 let targetYaw = 0;
 
 function startGyro(){
-  window.addEventListener("deviceorientation", e=>{
-    let tilt = e.gamma || 0;
-    tilt = Math.max(-45, Math.min(45, tilt));
-    targetYaw = tilt * 0.0025;
-  });
+
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+
+    DeviceOrientationEvent.requestPermission()
+      .then(res=>{
+        if(res==="granted"){
+          window.addEventListener("deviceorientation", handleGyro);
+        }
+      });
+
+  } else {
+    window.addEventListener("deviceorientation", handleGyro);
+  }
+}
+
+function handleGyro(e){
+  let tilt = e.gamma || 0;
+  tilt = Math.max(-45, Math.min(45, tilt));
+  targetYaw = tilt * 0.0025;
 }
 
 /* ======================
-   AUDIO
+   AUDIO + START
 ====================== */
 let started = false;
 
@@ -167,27 +179,34 @@ function startExperience(){
   startGyro();
 }
 
+/* 🔥 TOUCH FIX (ÇAKIŞMA YOK) */
+window.addEventListener("touchstart", (e)=>{
+  startExperience();
+  isWarp = true;
+}, { passive: true });
+
+window.addEventListener("touchend", ()=>{
+  isWarp = false;
+});
+
 window.addEventListener("click", startExperience);
-window.addEventListener("touchstart", startExperience);
 
 /* ======================
    WARP
 ====================== */
 let baseSpeed = isMobile ? 3 : 4;
-let warpSpeed = isMobile ? 10 : 20;
+let warpSpeed = isMobile ? 9 : 20;
 let speed = baseSpeed;
 let isWarp = false;
 
 window.addEventListener("mousedown", ()=> isWarp = true);
 window.addEventListener("mouseup", ()=> isWarp = false);
-window.addEventListener("touchstart", ()=> isWarp = true);
-window.addEventListener("touchend", ()=> isWarp = false);
 
 /* ======================
    FOV
 ====================== */
 let baseFov = 300;
-let warpFov = 650;
+let warpFov = 600;
 let currentFov = baseFov;
 
 /* ======================
@@ -197,24 +216,15 @@ function update(){
 
   yaw += (targetYaw - yaw) * 0.08;
 
-  // DRIFT FIX
-  camDriftX += (Math.random()-0.5)*0.03;
-  camDriftY += (Math.random()-0.5)*0.03;
+  camDriftX += (Math.random()-0.5)*0.02;
+  camDriftY += (Math.random()-0.5)*0.02;
 
   camDriftX *= 0.98;
   camDriftY *= 0.98;
 
-  // SPEED
-  if(isWarp){
-    speed += (warpSpeed - speed) * 0.06;
-  } else {
-    speed += (baseSpeed - speed) * 0.06;
-  }
-
-  // FOV
+  speed += ((isWarp ? warpSpeed : baseSpeed) - speed) * 0.05;
   currentFov += ((isWarp ? warpFov : baseFov) - currentFov) * 0.05;
 
-  // STARS
   stars.forEach(s=>{
     s.prevZ = s.z;
     s.z -= speed * (0.5 + s.layer);
@@ -223,7 +233,6 @@ function update(){
       s.x = (Math.random()-0.5)*2000;
       s.y = (Math.random()-0.5)*2000;
       s.z = 2000;
-      s.prevZ = s.z;
     }
 
     const cos = Math.cos(yaw);
@@ -236,7 +245,6 @@ function update(){
     s.z = z;
   });
 
-  // METEOR
   if(meteorPhase === 0 && --meteorTimer <= 0){
     spawnMeteor();
     meteorPhase = 1;
@@ -251,7 +259,6 @@ function update(){
     }
   }
 
-  // PLANET
   if(planetPhase === 0 && --planetTimer <= 0){
     spawnPlanet();
     planetPhase = 1;
@@ -262,13 +269,10 @@ function update(){
 
     if(planet.x < -500 || planet.x > w+500){
       planet = null;
-      planetPhase = 2;
     }
   }
 
-  /* ======================
-     🔥 AUTO PERFORMANCE (EN KRİTİK)
-  ====================== */
+  /* AUTO PERFORMANCE */
   frameCount++;
   let now = performance.now();
 
@@ -278,8 +282,7 @@ function update(){
     lastFpsTime = now;
 
     if(fps < 40){
-      quality *= 0.9;
-      STAR_COUNT = Math.max(120, STAR_COUNT * 0.9);
+      STAR_COUNT = Math.max(120, STAR_COUNT * 0.85);
       generateStars();
     }
   }
@@ -290,7 +293,6 @@ function update(){
 ====================== */
 function draw(){
 
-  // 🔥 CLEAR (CRITICAL FIX)
   ctx.clearRect(0,0,w,h);
 
   ctx.fillStyle = "white";
@@ -304,10 +306,7 @@ function draw(){
     if(x<0 || x>w || y<0 || y>h) return;
 
     if(isWarp && !isMobile){
-      ctx.beginPath();
-      ctx.moveTo(x,y);
-      ctx.lineTo(x+1,y+1);
-      ctx.stroke();
+      ctx.fillRect(x,y,2,2);
     } else {
       ctx.fillRect(x,y,2,2);
     }
@@ -323,11 +322,15 @@ function draw(){
 }
 
 /* ======================
-   LOOP
+   LOOP (SAFE)
 ====================== */
 function loop(){
-  update();
-  draw();
+  try{
+    update();
+    draw();
+  } catch(e){
+    console.log("loop error", e);
+  }
   requestAnimationFrame(loop);
 }
 
