@@ -47,7 +47,13 @@ window.addEventListener("resize", resize);
 resize();
 
 /* ======================
-   STARFIELD
+   ⭐ PRO CAMERA DRIFT
+====================== */
+let camDriftX = 0;
+let camDriftY = 0;
+
+/* ======================
+   ⭐ STARFIELD (PARALLAX)
 ====================== */
 const STAR_COUNT = 800;
 const stars = [];
@@ -57,26 +63,23 @@ function createStar(){
     x: (Math.random()-0.5)*2000,
     y: (Math.random()-0.5)*2000,
     z: Math.random()*2000 + 1,
-    prevZ: 0
+    prevZ: 0,
+    layer: Math.random() // 🔥 PRO
   };
 }
 
 for(let i=0;i<STAR_COUNT;i++){
   stars.push(createStar());
 }
+
 /* ======================
-   METEOR SYSTEM (FIX + EFFECT)
+   METEOR SYSTEM
 ====================== */
 const meteorImg = new Image();
-
-// 🔥 önce event
 meteorImg.onload = () => console.log("meteor loaded");
-
-// 🔥 sonra src
 meteorImg.src = "image/m1.png";
 
 let meteor = null;
-
 let meteorPhase = 0;
 let meteorTimer = 30 * 60;
 
@@ -94,20 +97,14 @@ function spawnMeteor(){
   };
 }
 
-
 /* ======================
-   🪐 PLANET SYSTEM (YENİ)
+   PLANET SYSTEM
 ====================== */
 const planetImg = new Image();
-
-// 🔥 önce event
 planetImg.onload = () => console.log("planet loaded");
-
-// 🔥 sonra src
 planetImg.src = "image/a1.png";
 
 let planet = null;
-
 let planetPhase = 0;
 let planetTimer = 60 * 60;
 
@@ -124,7 +121,7 @@ function spawnPlanet(){
 }
 
 /* ======================
-   GYRO CONTROL
+   GYRO
 ====================== */
 let yaw = 0;
 let targetYaw = 0;
@@ -138,7 +135,7 @@ function startGyro(){
 }
 
 /* ======================
-   SES + START
+   AUDIO
 ====================== */
 let started = false;
 
@@ -165,22 +162,20 @@ window.addEventListener("click", startExperience);
 window.addEventListener("touchstart", startExperience);
 
 /* ======================
-   WARP CONTROL
+   WARP
 ====================== */
 let baseSpeed = 4;
 let warpSpeed = 20;
 let speed = baseSpeed;
-
 let isWarp = false;
 
 window.addEventListener("mousedown", ()=> isWarp = true);
 window.addEventListener("mouseup", ()=> isWarp = false);
-
 window.addEventListener("touchstart", ()=> isWarp = true);
 window.addEventListener("touchend", ()=> isWarp = false);
 
 /* ======================
-   FOV CONTROL
+   FOV
 ====================== */
 let baseFov = 300;
 let warpFov = 700;
@@ -193,23 +188,29 @@ function update(){
 
   yaw += (targetYaw - yaw) * 0.08;
 
+  // ⭐ DRIFT
+  camDriftX += (Math.random()-0.5)*0.2;
+  camDriftY += (Math.random()-0.5)*0.2;
+
+  // ⭐ SPEED
   if(isWarp){
     speed += (warpSpeed - speed) * 0.1;
   } else {
     speed += (baseSpeed - speed) * 0.1;
   }
 
+  // ⭐ FOV
   if(isWarp){
     currentFov += (warpFov - currentFov) * 0.08;
   } else {
     currentFov += (baseFov - currentFov) * 0.08;
   }
 
-  /* ⭐ STARS */
+  // ⭐ STARS
   stars.forEach(s=>{
     s.prevZ = s.z;
 
-    s.z -= speed;
+    s.z -= speed * (0.5 + s.layer);
 
     if(s.z <= 1){
       s.x = (Math.random()-0.5)*2000;
@@ -228,7 +229,7 @@ function update(){
     s.z = z;
   });
 
-  /* ☄️ METEOR EVENT */
+  // ⭐ METEOR EVENT
   if(meteorPhase === 0){
     meteorTimer--;
     if(meteorTimer <= 0){
@@ -252,22 +253,16 @@ function update(){
     }
   }
 
-  /* ☄️ METEOR UPDATE */
   if(meteor){
     meteor.x += meteor.vx;
     meteor.y += meteor.vy;
 
-    if(
-      meteor.x < -300 || 
-      meteor.x > w + 300 ||
-      meteor.y < -200 ||
-      meteor.y > h + 200
-    ){
+    if(meteor.x < -300 || meteor.x > w+300 || meteor.y < -200 || meteor.y > h+200){
       meteor = null;
     }
   }
 
-  /* 🪐 PLANET EVENT */
+  // ⭐ PLANET
   if(planetPhase === 0){
     planetTimer--;
     if(planetTimer <= 0){
@@ -276,11 +271,10 @@ function update(){
     }
   }
 
-  /* 🪐 PLANET UPDATE */
   if(planet){
     planet.x += planet.dir * planet.speed;
 
-    if(planet.x < -500 || planet.x > w + 500){
+    if(planet.x < -500 || planet.x > w+500){
       planet = null;
       planetPhase = 2;
     }
@@ -288,21 +282,23 @@ function update(){
 }
 
 function draw(){
-  ctx.fillStyle = "black";
+
+  // ⭐ MOTION BLUR
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
   ctx.fillRect(0,0,w,h);
 
   ctx.strokeStyle = "white";
   ctx.fillStyle = "white";
 
-  /* ⭐ STARS */
+  // ⭐ STARS
   stars.forEach(s=>{
     const fov = currentFov;
 
     const scale = fov / s.z;
     const prevScale = fov / s.prevZ;
 
-    const x = s.x * scale + w/2;
-    const y = s.y * scale + h/2;
+    const x = s.x * scale + w/2 + camDriftX;
+    const y = s.y * scale + h/2 + camDriftY;
 
     const px = s.x * prevScale + w/2;
     const py = s.y * prevScale + h/2;
@@ -310,50 +306,25 @@ function draw(){
     if(x<0 || x>w || y<0 || y>h) return;
 
     if(isWarp){
+      ctx.lineWidth = 1 + Math.random()*2;
       ctx.beginPath();
       ctx.moveTo(px, py);
       ctx.lineTo(x, y);
       ctx.stroke();
     } else {
-      const size = (1 - s.z / 2000) * 3;
+      const size = (1 - s.z / 2000) * (1 + s.layer*2);
       ctx.fillRect(x,y,size,size);
     }
   });
 
-  /* 🪐 PLANET DRAW */
+  // PLANET
   if(planet){
-    ctx.drawImage(
-      planetImg,
-      planet.x,
-      planet.y,
-      planet.size,
-      planet.size
-    );
+    ctx.drawImage(planetImg, planet.x, planet.y, planet.size, planet.size);
   }
 
-  /* ☄️ METEOR DRAW */
+  // METEOR
   if(meteor){
-
-    const glow = ctx.createRadialGradient(
-      meteor.x, meteor.y, 0,
-      meteor.x, meteor.y, meteor.size
-    );
-
-    glow.addColorStop(0, "rgba(255,200,100,0.9)");
-    glow.addColorStop(1, "rgba(255,100,0,0)");
-
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(meteor.x, meteor.y, meteor.size, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.drawImage(
-      meteorImg,
-      meteor.x,
-      meteor.y,
-      meteor.size,
-      meteor.size
-    );
+    ctx.drawImage(meteorImg, meteor.x, meteor.y, meteor.size, meteor.size);
   }
 }
 
