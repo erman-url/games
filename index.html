@@ -33,7 +33,6 @@ canvas {
 
 <img id="cockpit" src="image/cockpit.png" />
 <audio id="bgSound" src="image/sound-space1.mp3" loop></audio>
-
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -47,6 +46,11 @@ window.addEventListener("resize", resize);
 resize();
 
 /* ======================
+   📱 MOBILE DETECT (EN ÜSTE ALINDI)
+====================== */
+const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+/* ======================
    ⭐ PRO CAMERA DRIFT
 ====================== */
 let camDriftX = 0;
@@ -55,8 +59,8 @@ let camDriftY = 0;
 /* ======================
    ⭐ STARFIELD (PARALLAX)
 ====================== */
-const STAR_COUNT = 800;
-const stars = [];
+let STAR_COUNT = isMobile ? 280 : 400; // 🔥 FIX
+let stars = [];
 
 function createStar(){
   return {
@@ -64,13 +68,18 @@ function createStar(){
     y: (Math.random()-0.5)*2000,
     z: Math.random()*2000 + 1,
     prevZ: 0,
-    layer: Math.random() // 🔥 PRO
+    layer: Math.random()
   };
 }
 
-for(let i=0;i<STAR_COUNT;i++){
-  stars.push(createStar());
+function generateStars(){
+  stars = [];
+  for(let i=0;i<STAR_COUNT;i++){
+    stars.push(createStar());
+  }
 }
+
+generateStars();
 
 /* ======================
    METEOR SYSTEM
@@ -91,9 +100,9 @@ function spawnMeteor(){
   meteor = {
     x: fromLeft ? -200 : w + 200,
     y: Math.random() * h * 0.6,
-    vx: Math.cos(angle) * (0.8 + depth * 1.5) * (fromLeft ? 1 : -1),
-    vy: Math.sin(angle) * (1 + depth * 2),
-    size: 60 + depth * 140,
+    vx: Math.cos(angle) * (0.6 + depth * 1.2), // 🔥 daha stabil
+    vy: Math.sin(angle) * (1 + depth * 1.5),
+    size: 50 + depth * 120,
   };
 }
 
@@ -115,7 +124,7 @@ function spawnPlanet(){
     x: fromLeft ? -400 : w + 400,
     y: h * 0.2,
     dir: fromLeft ? 1 : -1,
-    speed: 0.6,
+    speed: isMobile ? 0.4 : 0.6, // 🔥 mobil yavaş
     size: Math.min(w,h) * 0.7
   };
 }
@@ -164,8 +173,8 @@ window.addEventListener("touchstart", startExperience);
 /* ======================
    WARP
 ====================== */
-let baseSpeed = 4;
-let warpSpeed = 20;
+let baseSpeed = isMobile ? 3 : 4;
+let warpSpeed = isMobile ? 12 : 20;
 let speed = baseSpeed;
 let isWarp = false;
 
@@ -188,22 +197,22 @@ function update(){
 
   yaw += (targetYaw - yaw) * 0.08;
 
-  // ⭐ DRIFT
-  camDriftX += (Math.random()-0.5)*0.2;
-  camDriftY += (Math.random()-0.5)*0.2;
+  // ⭐ DRIFT (FIX)
+  camDriftX += (Math.random()-0.5)*0.05;
+  camDriftY += (Math.random()-0.5)*0.05;
 
   // ⭐ SPEED
   if(isWarp){
-    speed += (warpSpeed - speed) * 0.1;
+    speed += (warpSpeed - speed) * 0.08;
   } else {
-    speed += (baseSpeed - speed) * 0.1;
+    speed += (baseSpeed - speed) * 0.08;
   }
 
   // ⭐ FOV
   if(isWarp){
-    currentFov += (warpFov - currentFov) * 0.08;
+    currentFov += (warpFov - currentFov) * 0.06;
   } else {
-    currentFov += (baseFov - currentFov) * 0.08;
+    currentFov += (baseFov - currentFov) * 0.06;
   }
 
   // ⭐ STARS
@@ -229,27 +238,12 @@ function update(){
     s.z = z;
   });
 
-  // ⭐ METEOR EVENT
+  // ⭐ METEOR
   if(meteorPhase === 0){
     meteorTimer--;
     if(meteorTimer <= 0){
       spawnMeteor();
       meteorPhase = 1;
-    }
-  }
-
-  else if(meteorPhase === 1){
-    if(!meteor){
-      meteorPhase = 2;
-      meteorTimer = 180 * 60;
-    }
-  }
-
-  else if(meteorPhase === 2){
-    meteorTimer--;
-    if(meteorTimer <= 0){
-      spawnMeteor();
-      meteorPhase = 3;
     }
   }
 
@@ -283,14 +277,13 @@ function update(){
 
 function draw(){
 
-  // ⭐ MOTION BLUR
-  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  // ⭐ SAFE MOTION BLUR
+  ctx.fillStyle = isMobile ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.2)";
   ctx.fillRect(0,0,w,h);
 
   ctx.strokeStyle = "white";
   ctx.fillStyle = "white";
 
-  // ⭐ STARS
   stars.forEach(s=>{
     const fov = currentFov;
 
@@ -306,7 +299,7 @@ function draw(){
     if(x<0 || x>w || y<0 || y>h) return;
 
     if(isWarp){
-      ctx.lineWidth = 1 + Math.random()*2;
+      ctx.lineWidth = 1; // 🔥 FIX
       ctx.beginPath();
       ctx.moveTo(px, py);
       ctx.lineTo(x, y);
@@ -317,20 +310,26 @@ function draw(){
     }
   });
 
-  // PLANET
   if(planet){
     ctx.drawImage(planetImg, planet.x, planet.y, planet.size, planet.size);
   }
 
-  // METEOR
   if(meteor){
     ctx.drawImage(meteorImg, meteor.x, meteor.y, meteor.size, meteor.size);
   }
 }
 
-function loop(){
-  update();
-  draw();
+/* ======================
+   FPS LIMIT
+====================== */
+let last = 0;
+
+function loop(t){
+  if(t - last > 16){
+    update();
+    draw();
+    last = t;
+  }
   requestAnimationFrame(loop);
 }
 
