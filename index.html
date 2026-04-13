@@ -46,20 +46,28 @@ window.addEventListener("resize", resize);
 resize();
 
 /* ======================
-   📱 MOBILE DETECT (EN ÜSTE ALINDI)
+   📱 MOBILE DETECT
 ====================== */
 const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
 /* ======================
-   ⭐ PRO CAMERA DRIFT
+   ⭐ PERFORMANCE WATCHDOG (YENİ)
+====================== */
+let fps = 60;
+let frameCount = 0;
+let lastFpsTime = performance.now();
+let quality = isMobile ? 0.7 : 1;
+
+/* ======================
+   ⭐ CAMERA DRIFT
 ====================== */
 let camDriftX = 0;
 let camDriftY = 0;
 
 /* ======================
-   ⭐ STARFIELD (PARALLAX)
+   ⭐ STARFIELD
 ====================== */
-let STAR_COUNT = isMobile ? 280 : 400; // 🔥 FIX
+let STAR_COUNT = Math.floor((isMobile ? 260 : 400) * quality);
 let stars = [];
 
 function createStar(){
@@ -82,7 +90,7 @@ function generateStars(){
 generateStars();
 
 /* ======================
-   METEOR SYSTEM
+   METEOR
 ====================== */
 const meteorImg = new Image();
 meteorImg.onload = () => console.log("meteor loaded");
@@ -100,14 +108,14 @@ function spawnMeteor(){
   meteor = {
     x: fromLeft ? -200 : w + 200,
     y: Math.random() * h * 0.6,
-    vx: Math.cos(angle) * (0.6 + depth * 1.2), // 🔥 daha stabil
-    vy: Math.sin(angle) * (1 + depth * 1.5),
+    vx: Math.cos(angle) * (0.5 + depth * 1.0),
+    vy: Math.sin(angle) * (1 + depth * 1.2),
     size: 50 + depth * 120,
   };
 }
 
 /* ======================
-   PLANET SYSTEM
+   PLANET
 ====================== */
 const planetImg = new Image();
 planetImg.onload = () => console.log("planet loaded");
@@ -124,7 +132,7 @@ function spawnPlanet(){
     x: fromLeft ? -400 : w + 400,
     y: h * 0.2,
     dir: fromLeft ? 1 : -1,
-    speed: isMobile ? 0.4 : 0.6, // 🔥 mobil yavaş
+    speed: isMobile ? 0.4 : 0.6,
     size: Math.min(w,h) * 0.7
   };
 }
@@ -156,15 +164,7 @@ function startExperience(){
   audio.volume = 0.5;
   audio.play().catch(()=>{});
 
-  if (typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission()
-      .then(res=>{
-        if(res==="granted") startGyro();
-      });
-  } else {
-    startGyro();
-  }
+  startGyro();
 }
 
 window.addEventListener("click", startExperience);
@@ -174,7 +174,7 @@ window.addEventListener("touchstart", startExperience);
    WARP
 ====================== */
 let baseSpeed = isMobile ? 3 : 4;
-let warpSpeed = isMobile ? 12 : 20;
+let warpSpeed = isMobile ? 10 : 20;
 let speed = baseSpeed;
 let isWarp = false;
 
@@ -187,38 +187,36 @@ window.addEventListener("touchend", ()=> isWarp = false);
    FOV
 ====================== */
 let baseFov = 300;
-let warpFov = 700;
+let warpFov = 650;
 let currentFov = baseFov;
 
 /* ======================
-   LOOP
+   UPDATE
 ====================== */
 function update(){
 
   yaw += (targetYaw - yaw) * 0.08;
 
-  // ⭐ DRIFT (FIX)
-  camDriftX += (Math.random()-0.5)*0.05;
-  camDriftY += (Math.random()-0.5)*0.05;
+  // DRIFT FIX
+  camDriftX += (Math.random()-0.5)*0.03;
+  camDriftY += (Math.random()-0.5)*0.03;
 
-  // ⭐ SPEED
+  camDriftX *= 0.98;
+  camDriftY *= 0.98;
+
+  // SPEED
   if(isWarp){
-    speed += (warpSpeed - speed) * 0.08;
+    speed += (warpSpeed - speed) * 0.06;
   } else {
-    speed += (baseSpeed - speed) * 0.08;
+    speed += (baseSpeed - speed) * 0.06;
   }
 
-  // ⭐ FOV
-  if(isWarp){
-    currentFov += (warpFov - currentFov) * 0.06;
-  } else {
-    currentFov += (baseFov - currentFov) * 0.06;
-  }
+  // FOV
+  currentFov += ((isWarp ? warpFov : baseFov) - currentFov) * 0.05;
 
-  // ⭐ STARS
+  // STARS
   stars.forEach(s=>{
     s.prevZ = s.z;
-
     s.z -= speed * (0.5 + s.layer);
 
     if(s.z <= 1){
@@ -238,13 +236,10 @@ function update(){
     s.z = z;
   });
 
-  // ⭐ METEOR
-  if(meteorPhase === 0){
-    meteorTimer--;
-    if(meteorTimer <= 0){
-      spawnMeteor();
-      meteorPhase = 1;
-    }
+  // METEOR
+  if(meteorPhase === 0 && --meteorTimer <= 0){
+    spawnMeteor();
+    meteorPhase = 1;
   }
 
   if(meteor){
@@ -256,13 +251,10 @@ function update(){
     }
   }
 
-  // ⭐ PLANET
-  if(planetPhase === 0){
-    planetTimer--;
-    if(planetTimer <= 0){
-      spawnPlanet();
-      planetPhase = 1;
-    }
+  // PLANET
+  if(planetPhase === 0 && --planetTimer <= 0){
+    spawnPlanet();
+    planetPhase = 1;
   }
 
   if(planet){
@@ -273,40 +265,51 @@ function update(){
       planetPhase = 2;
     }
   }
+
+  /* ======================
+     🔥 AUTO PERFORMANCE (EN KRİTİK)
+  ====================== */
+  frameCount++;
+  let now = performance.now();
+
+  if(now - lastFpsTime > 1000){
+    fps = frameCount;
+    frameCount = 0;
+    lastFpsTime = now;
+
+    if(fps < 40){
+      quality *= 0.9;
+      STAR_COUNT = Math.max(120, STAR_COUNT * 0.9);
+      generateStars();
+    }
+  }
 }
 
+/* ======================
+   DRAW
+====================== */
 function draw(){
 
-  // ⭐ SAFE MOTION BLUR
-  ctx.fillStyle = isMobile ? "rgba(0,0,0,0.1)" : "rgba(0,0,0,0.2)";
-  ctx.fillRect(0,0,w,h);
+  // 🔥 CLEAR (CRITICAL FIX)
+  ctx.clearRect(0,0,w,h);
 
-  ctx.strokeStyle = "white";
   ctx.fillStyle = "white";
 
   stars.forEach(s=>{
-    const fov = currentFov;
-
-    const scale = fov / s.z;
-    const prevScale = fov / s.prevZ;
+    const scale = currentFov / s.z;
 
     const x = s.x * scale + w/2 + camDriftX;
     const y = s.y * scale + h/2 + camDriftY;
 
-    const px = s.x * prevScale + w/2;
-    const py = s.y * prevScale + h/2;
-
     if(x<0 || x>w || y<0 || y>h) return;
 
-    if(isWarp){
-      ctx.lineWidth = 1; // 🔥 FIX
+    if(isWarp && !isMobile){
       ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.lineTo(x, y);
+      ctx.moveTo(x,y);
+      ctx.lineTo(x+1,y+1);
       ctx.stroke();
     } else {
-      const size = (1 - s.z / 2000) * (1 + s.layer*2);
-      ctx.fillRect(x,y,size,size);
+      ctx.fillRect(x,y,2,2);
     }
   });
 
@@ -320,16 +323,11 @@ function draw(){
 }
 
 /* ======================
-   FPS LIMIT
+   LOOP
 ====================== */
-let last = 0;
-
-function loop(t){
-  if(t - last > 16){
-    update();
-    draw();
-    last = t;
-  }
+function loop(){
+  update();
+  draw();
   requestAnimationFrame(loop);
 }
 
