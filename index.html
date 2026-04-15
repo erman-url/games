@@ -41,7 +41,7 @@ const ctx = canvas.getContext("2d");
 /* ======================
    ✅ CRITICAL FIX
 ====================== */
-let started = false; // ❗ EKLENDİ
+let started = false;
 
 let w,h;
 function resize(){
@@ -93,6 +93,37 @@ function generateStars(){
   }
 }
 generateStars();
+
+/* ======================
+   🔫 BULLET SYSTEM
+====================== */
+let bullets = [];
+
+function createBullet(side){
+  const offset = side === "left" ? -70 : 70;
+
+  return {
+    x: offset,
+    y: 0,        // cockpit referans
+    z: 60,       // direkt görünür başlar
+    speed: 35,
+    size: 4
+  };
+}
+
+function shoot(){
+  bullets.push(createBullet("left"));
+  bullets.push(createBullet("right"));
+
+  if(bullets.length > 200) bullets.shift(); // performans koruma
+}
+
+/* ======================
+   🔥 FIRE CONTROL
+====================== */
+let isFiring = false;
+let lastShot = 0;
+let fireRate = 120;
 
 /* ======================
    METEOR
@@ -169,7 +200,7 @@ function handleGyro(e){
 }
 
 /* ======================
-   🔊 AUDIO SYSTEM (PRO)
+   🔊 AUDIO SYSTEM
 ====================== */
 function startExperience(){
   if(started) return;
@@ -181,16 +212,11 @@ function startExperience(){
   radio.volume = 1;
   bg.volume = 0;
 
-  // ✅ radiocall başlat
   radio.play()
   .then(()=>{
-
-    // ✅ sağlam event (tek sefer)
     radio.addEventListener("ended", () => {
-
       bg.play().catch(()=>{});
 
-      // 🔥 smooth fade-in
       let fade = setInterval(()=>{
         if(bg.volume < 0.5){
           bg.volume += 0.02;
@@ -200,10 +226,8 @@ function startExperience(){
       }, 100);
 
     }, { once: true });
-
   })
   .catch(()=>{
-    // fallback
     bg.volume = 0.5;
     bg.play().catch(()=>{});
   });
@@ -217,13 +241,28 @@ function startExperience(){
 window.addEventListener("touchstart", ()=>{
   startExperience();
   isWarp = true;
+  isFiring = true;
 }, { passive: true });
 
 window.addEventListener("touchend", ()=>{
   isWarp = false;
+  isFiring = false;
 });
 
-window.addEventListener("click", startExperience);
+window.addEventListener("mousedown", ()=>{
+  isWarp = true;
+  isFiring = true;
+});
+
+window.addEventListener("mouseup", ()=>{
+  isWarp = false;
+  isFiring = false;
+});
+
+window.addEventListener("click", (e)=>{
+  if(isMobile) return;
+  startExperience();
+});
 
 /* ======================
    WARP
@@ -232,9 +271,6 @@ let baseSpeed = isMobile ? 3 : 4;
 let warpSpeed = isMobile ? 9 : 20;
 let speed = baseSpeed;
 let isWarp = false;
-
-window.addEventListener("mousedown", ()=> isWarp = true);
-window.addEventListener("mouseup", ()=> isWarp = false);
 
 /* ======================
    FOV
@@ -258,6 +294,26 @@ function update(){
 
   speed += ((isWarp ? warpSpeed : baseSpeed) - speed) * 0.05;
   currentFov += ((isWarp ? warpFov : baseFov) - currentFov) * 0.05;
+
+  /* FIRE */
+  let now = performance.now();
+  if(isFiring && now - lastShot > fireRate){
+    shoot();
+    lastShot = now;
+  }
+
+  /* BULLETS */
+bullets.forEach((b,i)=>{
+
+  b.z += b.speed;
+
+  // 🔥 MERKEZE YAKLAŞMA (senin çizdiğin efekt)
+  b.x *= 0.965;
+
+  if(b.z > 2000){
+    bullets.splice(i,1);
+  }
+});
 
   stars.forEach(s=>{
     s.prevZ = s.z;
@@ -307,12 +363,12 @@ function update(){
   }
 
   frameCount++;
-  let now = performance.now();
+  let now2 = performance.now();
 
-  if(now - lastFpsTime > 1000){
+  if(now2 - lastFpsTime > 1000){
     fps = frameCount;
     frameCount = 0;
-    lastFpsTime = now;
+    lastFpsTime = now2;
 
     if(fps < 40){
       STAR_COUNT = Math.max(120, STAR_COUNT * 0.85);
@@ -340,6 +396,19 @@ function draw(){
 
     ctx.fillRect(x,y,2,2);
   });
+
+  /* 🔫 BULLETS DRAW */
+bullets.forEach(b=>{
+  const scale = currentFov / b.z;
+
+  const x = b.x * scale + w/2;
+
+  // 🔥 cockpit hizası sabitlendi
+  const y = h * 0.75 - (b.z * 0.25);
+
+  ctx.fillStyle = "rgba(255,60,60,0.95)";
+  ctx.fillRect(x, y, b.size, b.size * 6);
+});
 
   if(planet){
     ctx.drawImage(planetImg, planet.x, planet.y, planet.size, planet.size);
