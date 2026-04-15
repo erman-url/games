@@ -32,10 +32,16 @@ canvas {
 <canvas id="game"></canvas>
 
 <img id="cockpit" src="image/cockpit.png" />
+<audio id="radioCall" src="image/radiocall.mp3"></audio>
 <audio id="bgSound" src="image/sound-space1.mp3" loop></audio>
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+
+/* ======================
+   ✅ CRITICAL FIX
+====================== */
+let started = false; // ❗ EKLENDİ
 
 let w,h;
 function resize(){
@@ -135,13 +141,12 @@ function spawnPlanet(){
 }
 
 /* ======================
-   GYRO (FULL FIX)
+   GYRO
 ====================== */
 let yaw = 0;
 let targetYaw = 0;
 
 function startGyro(){
-
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
 
@@ -164,23 +169,52 @@ function handleGyro(e){
 }
 
 /* ======================
-   AUDIO + START
+   🔊 AUDIO SYSTEM (PRO)
 ====================== */
-let started = false;
-
 function startExperience(){
   if(started) return;
   started = true;
 
-  const audio = document.getElementById("bgSound");
-  audio.volume = 0.5;
-  audio.play().catch(()=>{});
+  const radio = document.getElementById("radioCall");
+  const bg = document.getElementById("bgSound");
+
+  radio.volume = 1;
+  bg.volume = 0;
+
+  // ✅ radiocall başlat
+  radio.play()
+  .then(()=>{
+
+    // ✅ sağlam event (tek sefer)
+    radio.addEventListener("ended", () => {
+
+      bg.play().catch(()=>{});
+
+      // 🔥 smooth fade-in
+      let fade = setInterval(()=>{
+        if(bg.volume < 0.5){
+          bg.volume += 0.02;
+        } else {
+          clearInterval(fade);
+        }
+      }, 100);
+
+    }, { once: true });
+
+  })
+  .catch(()=>{
+    // fallback
+    bg.volume = 0.5;
+    bg.play().catch(()=>{});
+  });
 
   startGyro();
 }
 
-/* 🔥 TOUCH FIX (ÇAKIŞMA YOK) */
-window.addEventListener("touchstart", (e)=>{
+/* ======================
+   INPUT
+====================== */
+window.addEventListener("touchstart", ()=>{
   startExperience();
   isWarp = true;
 }, { passive: true });
@@ -272,7 +306,6 @@ function update(){
     }
   }
 
-  /* AUTO PERFORMANCE */
   frameCount++;
   let now = performance.now();
 
@@ -305,11 +338,7 @@ function draw(){
 
     if(x<0 || x>w || y<0 || y>h) return;
 
-    if(isWarp && !isMobile){
-      ctx.fillRect(x,y,2,2);
-    } else {
-      ctx.fillRect(x,y,2,2);
-    }
+    ctx.fillRect(x,y,2,2);
   });
 
   if(planet){
@@ -322,7 +351,7 @@ function draw(){
 }
 
 /* ======================
-   LOOP (SAFE)
+   LOOP
 ====================== */
 function loop(){
   try{
