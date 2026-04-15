@@ -100,12 +100,9 @@ generateStars();
 let bullets = [];
 
 function createBullet(side){
-  const offset = side === "left" ? -70 : 70;
-
   return {
-    x: offset,
-    y: 0,        // cockpit referans
-    z: 60,       // direkt görünür başlar
+    x: side === "left" ? -70 : 70,
+    z: 60,
     speed: 35,
     size: 4
   };
@@ -114,8 +111,7 @@ function createBullet(side){
 function shoot(){
   bullets.push(createBullet("left"));
   bullets.push(createBullet("right"));
-
-  if(bullets.length > 200) bullets.shift(); // performans koruma
+  if(bullets.length > 200) bullets.shift();
 }
 
 /* ======================
@@ -126,27 +122,37 @@ let lastShot = 0;
 let fireRate = 120;
 
 /* ======================
-   METEOR
+   ☄️ METEOR (YENİ)
 ====================== */
-const meteorImg = new Image();
-meteorImg.src = "image/m1.png";
-
 let meteor = null;
-let meteorPhase = 0;
-let meteorTimer = 30 * 60;
+let meteorTimer = 120;
 
 function spawnMeteor(){
-  const fromLeft = Math.random() > 0.3;
-  const depth = Math.random();
-  const angle = (Math.random() - 0.5) * 0.4;
-
   meteor = {
-    x: fromLeft ? -200 : w + 200,
-    y: Math.random() * h * 0.6,
-    vx: Math.cos(angle) * (0.5 + depth),
-    vy: Math.sin(angle) * (1 + depth),
-    size: 50 + depth * 100,
+    x: (Math.random()-0.5)*600,
+    y: (Math.random()-0.5)*300,
+    z: 2000,
+    speed: 10 + Math.random()*6,
+    size: 120 + Math.random()*100,
+    rot: Math.random()*Math.PI,
+    rotSpeed: (Math.random()-0.5)*0.1
   };
+}
+
+/* ======================
+   💥 PARTICLE SYSTEM
+====================== */
+let particles = [];
+
+function createExplosion(x,y){
+  for(let i=0;i<25;i++){
+    particles.push({
+      x,y,
+      vx:(Math.random()-0.5)*6,
+      vy:(Math.random()-0.5)*6,
+      life:30+Math.random()*20
+    });
+  }
 }
 
 /* ======================
@@ -216,15 +222,10 @@ function startExperience(){
   .then(()=>{
     radio.addEventListener("ended", () => {
       bg.play().catch(()=>{});
-
       let fade = setInterval(()=>{
-        if(bg.volume < 0.5){
-          bg.volume += 0.02;
-        } else {
-          clearInterval(fade);
-        }
+        if(bg.volume < 0.5) bg.volume += 0.02;
+        else clearInterval(fade);
       }, 100);
-
     }, { once: true });
   })
   .catch(()=>{
@@ -303,78 +304,58 @@ function update(){
   }
 
   /* BULLETS */
-bullets.forEach((b,i)=>{
+  bullets.forEach((b,i)=>{
+    b.z += b.speed;
+    b.x *= 0.965;
+    if(b.z > 2000) bullets.splice(i,1);
+  });
 
-  b.z += b.speed;
-
-  // 🔥 MERKEZE YAKLAŞMA (senin çizdiğin efekt)
-  b.x *= 0.965;
-
-  if(b.z > 2000){
-    bullets.splice(i,1);
+  /* METEOR SPAWN */
+  if(!meteor && --meteorTimer <= 0){
+    spawnMeteor();
+    meteorTimer = 180;
   }
-});
 
+  if(meteor){
+    meteor.z -= meteor.speed;
+    meteor.rot += meteor.rotSpeed;
+
+    if(meteor.z < 50){
+      meteor = null;
+    }
+  }
+
+  /* COLLISION */
+  bullets.forEach((b,bi)=>{
+    if(!meteor) return;
+
+    let dx = b.x - meteor.x;
+    let dz = b.z - meteor.z;
+
+    if(dx*dx + dz*dz < 8000){
+      createExplosion(w/2,h/2);
+      meteor = null;
+      bullets.splice(bi,1);
+    }
+  });
+
+  /* PARTICLES */
+  particles.forEach((p,i)=>{
+    p.x += p.vx;
+    p.y += p.vy;
+    p.life--;
+    if(p.life <= 0) particles.splice(i,1);
+  });
+
+  /* STARS */
   stars.forEach(s=>{
-    s.prevZ = s.z;
     s.z -= speed * (0.5 + s.layer);
-
     if(s.z <= 1){
       s.x = (Math.random()-0.5)*2000;
       s.y = (Math.random()-0.5)*2000;
       s.z = 2000;
     }
-
-    const cos = Math.cos(yaw);
-    const sin = Math.sin(yaw);
-
-    const x = s.x * cos - s.z * sin;
-    const z = s.x * sin + s.z * cos;
-
-    s.x = x;
-    s.z = z;
   });
-
-  if(meteorPhase === 0 && --meteorTimer <= 0){
-    spawnMeteor();
-    meteorPhase = 1;
-  }
-
-  if(meteor){
-    meteor.x += meteor.vx;
-    meteor.y += meteor.vy;
-
-    if(meteor.x < -300 || meteor.x > w+300 || meteor.y < -200 || meteor.y > h+200){
-      meteor = null;
-    }
-  }
-
-  if(planetPhase === 0 && --planetTimer <= 0){
-    spawnPlanet();
-    planetPhase = 1;
-  }
-
-  if(planet){
-    planet.x += planet.dir * planet.speed;
-
-    if(planet.x < -500 || planet.x > w+500){
-      planet = null;
-    }
-  }
-
-  frameCount++;
-  let now2 = performance.now();
-
-  if(now2 - lastFpsTime > 1000){
-    fps = frameCount;
-    frameCount = 0;
-    lastFpsTime = now2;
-
-    if(fps < 40){
-      STAR_COUNT = Math.max(120, STAR_COUNT * 0.85);
-      generateStars();
-    }
-  }
 }
 
 /* ======================
@@ -388,35 +369,49 @@ function draw(){
 
   stars.forEach(s=>{
     const scale = currentFov / s.z;
-
-    const x = s.x * scale + w/2 + camDriftX;
-    const y = s.y * scale + h/2 + camDriftY;
-
-    if(x<0 || x>w || y<0 || y>h) return;
-
+    const x = s.x * scale + w/2;
+    const y = s.y * scale + h/2;
     ctx.fillRect(x,y,2,2);
   });
 
-  /* 🔫 BULLETS DRAW */
-bullets.forEach(b=>{
-  const scale = currentFov / b.z;
+  /* BULLETS */
+  bullets.forEach(b=>{
+    const scale = currentFov / b.z;
+    const x = b.x * scale + w/2;
+    const y = h * 0.75 - (b.z * 0.25);
+    ctx.fillStyle = "rgba(255,60,60,0.95)";
+    ctx.fillRect(x, y, b.size, b.size * 6);
+  });
 
-  const x = b.x * scale + w/2;
-
-  // 🔥 cockpit hizası sabitlendi
-  const y = h * 0.75 - (b.z * 0.25);
-
-  ctx.fillStyle = "rgba(255,60,60,0.95)";
-  ctx.fillRect(x, y, b.size, b.size * 6);
-});
-
-  if(planet){
-    ctx.drawImage(planetImg, planet.x, planet.y, planet.size, planet.size);
-  }
-
+  /* METEOR */
   if(meteor){
-    ctx.drawImage(meteorImg, meteor.x, meteor.y, meteor.size, meteor.size);
+    const scale = currentFov / meteor.z;
+    const x = meteor.x * scale + w/2;
+    const y = meteor.y * scale + h/2;
+    const size = meteor.size * scale;
+
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.rotate(meteor.rot);
+
+    ctx.fillStyle="#5a4a3f";
+    ctx.beginPath();
+    for(let i=0;i<8;i++){
+      const ang = i*(Math.PI*2/8);
+      const r = size*(0.7+Math.random()*0.3);
+      ctx.lineTo(Math.cos(ang)*r, Math.sin(ang)*r);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
   }
+
+  /* PARTICLES */
+  particles.forEach(p=>{
+    ctx.fillStyle="orange";
+    ctx.fillRect(p.x,p.y,3,3);
+  });
 }
 
 /* ======================
