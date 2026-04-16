@@ -38,9 +38,7 @@ canvas {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-/* ======================
-   ✅ CRITICAL FIX
-====================== */
+/* ====================== */
 let started = false;
 
 let w,h;
@@ -51,28 +49,20 @@ function resize(){
 window.addEventListener("resize", resize);
 resize();
 
-/* ======================
-   📱 MOBILE DETECT
-====================== */
+/* ====================== */
 const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
 
-/* ======================
-   ⭐ PERFORMANCE WATCHDOG
-====================== */
+/* ====================== */
 let fps = 60;
 let frameCount = 0;
 let lastFpsTime = performance.now();
 let quality = isMobile ? 0.7 : 1;
 
-/* ======================
-   ⭐ CAMERA DRIFT
-====================== */
+/* ====================== */
 let camDriftX = 0;
 let camDriftY = 0;
 
-/* ======================
-   ⭐ STARFIELD
-====================== */
+/* ====================== */
 let STAR_COUNT = Math.floor((isMobile ? 220 : 400) * quality);
 let stars = [];
 
@@ -95,13 +85,20 @@ function generateStars(){
 generateStars();
 
 /* ======================
-   🔫 BULLET SYSTEM
+   🔫 BULLET SYSTEM (PRO)
 ====================== */
 let bullets = [];
 
 function createBullet(side){
   return {
     x: side === "left" ? -70 : 70,
+
+    // 🎯 MERKEZ HEDEF
+    targetX: 0,
+
+    // 🎯 DOĞAL EĞİM
+    curve: (Math.random() - 0.5) * 0.3,
+
     z: 60,
     speed: 35,
     size: 4
@@ -114,16 +111,12 @@ function shoot(){
   if(bullets.length > 200) bullets.shift();
 }
 
-/* ======================
-   🔥 FIRE CONTROL
-====================== */
+/* ====================== */
 let isFiring = false;
 let lastShot = 0;
 let fireRate = 120;
 
-/* ======================
-   ☄️ METEOR (YENİ)
-====================== */
+/* ====================== */
 let meteor = null;
 let meteorTimer = 120;
 
@@ -139,9 +132,7 @@ function spawnMeteor(){
   };
 }
 
-/* ======================
-   💥 PARTICLE SYSTEM
-====================== */
+/* ====================== */
 let particles = [];
 
 function createExplosion(x,y){
@@ -155,9 +146,7 @@ function createExplosion(x,y){
   }
 }
 
-/* ======================
-   PLANET
-====================== */
+/* ====================== */
 const planetImg = new Image();
 planetImg.src = "image/a1.png";
 
@@ -177,9 +166,7 @@ function spawnPlanet(){
   };
 }
 
-/* ======================
-   GYRO
-====================== */
+/* ====================== */
 let yaw = 0;
 let targetYaw = 0;
 
@@ -205,9 +192,7 @@ function handleGyro(e){
   targetYaw = tilt * 0.0025;
 }
 
-/* ======================
-   🔊 AUDIO SYSTEM
-====================== */
+/* ====================== */
 function startExperience(){
   if(started) return;
   started = true;
@@ -236,9 +221,7 @@ function startExperience(){
   startGyro();
 }
 
-/* ======================
-   INPUT
-====================== */
+/* ====================== */
 window.addEventListener("touchstart", ()=>{
   startExperience();
   isWarp = true;
@@ -265,24 +248,18 @@ window.addEventListener("click", (e)=>{
   startExperience();
 });
 
-/* ======================
-   WARP
-====================== */
+/* ====================== */
 let baseSpeed = isMobile ? 3 : 4;
 let warpSpeed = isMobile ? 9 : 20;
 let speed = baseSpeed;
 let isWarp = false;
 
-/* ======================
-   FOV
-====================== */
+/* ====================== */
 let baseFov = 300;
 let warpFov = 600;
 let currentFov = baseFov;
 
-/* ======================
-   UPDATE
-====================== */
+/* ====================== */
 function update(){
 
   yaw += (targetYaw - yaw) * 0.08;
@@ -296,21 +273,27 @@ function update(){
   speed += ((isWarp ? warpSpeed : baseSpeed) - speed) * 0.05;
   currentFov += ((isWarp ? warpFov : baseFov) - currentFov) * 0.05;
 
-  /* FIRE */
   let now = performance.now();
   if(isFiring && now - lastShot > fireRate){
     shoot();
     lastShot = now;
   }
 
-  /* BULLETS */
+  /* 🔫 BULLETS (PRO FİZİK) */
   bullets.forEach((b,i)=>{
+
     b.z += b.speed;
-    b.x *= 0.965;
+
+    // 🎯 MERKEZE YAKLAŞMA
+    b.x += (b.targetX - b.x) * 0.08;
+
+    // 🎯 DOĞAL SAPMA
+    b.x += b.curve;
+    b.curve *= 0.98;
+
     if(b.z > 2000) bullets.splice(i,1);
   });
 
-  /* METEOR SPAWN */
   if(!meteor && --meteorTimer <= 0){
     spawnMeteor();
     meteorTimer = 180;
@@ -325,7 +308,6 @@ function update(){
     }
   }
 
-  /* COLLISION */
   bullets.forEach((b,bi)=>{
     if(!meteor) return;
 
@@ -339,7 +321,6 @@ function update(){
     }
   });
 
-  /* PARTICLES */
   particles.forEach((p,i)=>{
     p.x += p.vx;
     p.y += p.vy;
@@ -347,7 +328,6 @@ function update(){
     if(p.life <= 0) particles.splice(i,1);
   });
 
-  /* STARS */
   stars.forEach(s=>{
     s.z -= speed * (0.5 + s.layer);
     if(s.z <= 1){
@@ -358,9 +338,7 @@ function update(){
   });
 }
 
-/* ======================
-   DRAW
-====================== */
+/* ====================== */
 function draw(){
 
   ctx.clearRect(0,0,w,h);
@@ -374,16 +352,23 @@ function draw(){
     ctx.fillRect(x,y,2,2);
   });
 
-  /* BULLETS */
+  /* 🔫 BULLETS (PRO DRAW) */
   bullets.forEach(b=>{
     const scale = currentFov / b.z;
+
     const x = b.x * scale + w/2;
-    const y = h * 0.75 - (b.z * 0.25);
+
+    // 🎯 PERSPEKTİF FIX
+    const y = h * 0.75 - (scale * 25);
+
     ctx.fillStyle = "rgba(255,60,60,0.95)";
     ctx.fillRect(x, y, b.size, b.size * 6);
+
+    // glow
+    ctx.fillStyle = "rgba(255,120,120,0.4)";
+    ctx.fillRect(x-1, y, b.size+2, b.size*8);
   });
 
-  /* METEOR */
   if(meteor){
     const scale = currentFov / meteor.z;
     const x = meteor.x * scale + w/2;
@@ -407,16 +392,13 @@ function draw(){
     ctx.restore();
   }
 
-  /* PARTICLES */
   particles.forEach(p=>{
     ctx.fillStyle="orange";
     ctx.fillRect(p.x,p.y,3,3);
   });
 }
 
-/* ======================
-   LOOP
-====================== */
+/* ====================== */
 function loop(){
   try{
     update();
@@ -428,6 +410,7 @@ function loop(){
 }
 
 loop();
+
 </script>
 
 </body>
